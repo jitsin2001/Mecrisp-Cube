@@ -116,29 +116,6 @@ get_switch1:
 	movs	tos, r0
 	pop		{r0-r3, pc}
 
-
-@ -----------------------------------------------------------------------------
-		Wortbirne Flag_visible, "switch2?"
-get_switch2:
-		@ (  -- n ) get switch2
-@ -----------------------------------------------------------------------------
-	push	{r0-r3, lr}
-	pushdatos
-	bl		BSP_getSwitch2
-	movs	tos, r0
-	pop		{r0-r3, pc}
-
-@ -----------------------------------------------------------------------------
-		Wortbirne Flag_visible, "switch3?"
-get_switch3:
-		@ (  -- n ) get switch3
-@ -----------------------------------------------------------------------------
-	push	{r0-r3, lr}
-	pushdatos
-	bl		BSP_getSwitch3
-	movs	tos, r0
-	pop		{r0-r3, pc}
-
 @ -----------------------------------------------------------------------------
 		Wortbirne Flag_visible, "dport!"
 set_dport:

@@ -296,7 +296,7 @@ int BSP_getSwitch1(void) {
 	// only one thread is allowed to use the digital port
 	osMutexAcquire(DigitalPort_MutexID, osWaitForever);
 
-	if (HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_RESET) {
+	if (HAL_GPIO_ReadPin(SW1_GPIO_Port, SW1_Pin) == GPIO_PIN_RESET) {
 		return_value = -1;
 	} else {
 		return_value = FALSE;
@@ -306,53 +306,6 @@ int BSP_getSwitch1(void) {
 	return return_value;
 }
 
-/**
- *  @brief
- *      Gets the switch1 state
- *
- *      No debouncing
- *  @return
- *      FALSE for open switch, TRUE for closed (pressed) switch.
- */
-int BSP_getSwitch2(void) {
-	int return_value;
-
-	// only one thread is allowed to use the digital port
-	osMutexAcquire(DigitalPort_MutexID, osWaitForever);
-
-	if (HAL_GPIO_ReadPin(B2_GPIO_Port, B2_Pin) == GPIO_PIN_RESET) {
-		return_value = -1;
-	} else {
-		return_value = FALSE;
-	}
-
-	osMutexRelease(DigitalPort_MutexID);
-	return return_value;
-}
-
-/**
- *  @brief
- *      Gets the switch1 state
- *
- *      No debouncing
- *  @return
- *      FALSE for open switch, TRUE for closed (pressed) switch.
- */
-int BSP_getSwitch3(void) {
-	int return_value;
-
-	// only one thread is allowed to use the digital port
-	osMutexAcquire(DigitalPort_MutexID, osWaitForever);
-
-	if (HAL_GPIO_ReadPin(B3_GPIO_Port, B3_Pin) == GPIO_PIN_RESET) {
-		return_value =  -1;
-	} else {
-		return_value = FALSE;
-	}
-
-	osMutexRelease(DigitalPort_MutexID);
-	return return_value;
-}
 
 
 // digital port pins D0 to D15 (Arduino numbering)
@@ -366,15 +319,15 @@ typedef struct {
 static const PortPin_t PortPin_a[16] = {
 		{ D0_GPIO_Port, D0_Pin } ,
 		{ D1_GPIO_Port, D1_Pin } ,
-		{ D2_GPIO_Port, D2_Pin } ,
-		{ D3_GPIO_Port, D3_Pin } ,
-		{ D4_GPIO_Port, D4_Pin } ,
-		{ D5_GPIO_Port, D5_Pin } ,
+		{ 0, 0 } ,
+		{ 0, 0 } ,
+		{ 0, 0 } ,
+		{ 0, 0 } ,
 		{ D6_GPIO_Port, D6_Pin } ,
-		{ D7_GPIO_Port, D7_Pin } ,
-		{ D8_GPIO_Port, D9_Pin } ,
-		{ D9_GPIO_Port, D9_Pin } ,
-		{ D10_GPIO_Port, D10_Pin } ,
+		{ 0, 0 } ,
+		{ 0, 0 } ,
+		{ 0, 0 } ,
+		{ 0, 0 } ,
 		{ D11_GPIO_Port, D11_Pin } ,
 		{ D12_GPIO_Port, D12_Pin } ,
 		{ D13_GPIO_Port, D13_Pin } ,
@@ -398,7 +351,9 @@ void BSP_setDigitalPort(int state) {
 	osMutexAcquire(DigitalPort_MutexID, osWaitForever);
 
 	for (i=0; i<16; i++) {
-		HAL_GPIO_WritePin(PortPin_a[i].port, PortPin_a[i].pin, state & 0x01);
+		if (PortPin_a[i].port != 0) {
+			HAL_GPIO_WritePin(PortPin_a[i].port, PortPin_a[i].pin, state & 0x01);
+		}
 		state = state >> 1;
 	}
 
@@ -422,7 +377,9 @@ int BSP_getDigitalPort(void) {
 
 	for (i=15; i>-1; i--) {
 		return_value = return_value << 1;
-		return_value |= HAL_GPIO_ReadPin(PortPin_a[i].port, PortPin_a[i].pin);
+		if (PortPin_a[i].port != 0) {
+			return_value |= HAL_GPIO_ReadPin(PortPin_a[i].port, PortPin_a[i].pin);
+		}
 	}
 
 	osMutexRelease(DigitalPort_MutexID);
@@ -446,8 +403,9 @@ void BSP_setDigitalPin(int pin_number, int state) {
 	// only one thread is allowed to use the digital port
 	osMutexAcquire(DigitalPort_MutexID, osWaitForever);
 
-	HAL_GPIO_WritePin(PortPin_a[pin_number].port, PortPin_a[pin_number].pin, state);
-
+	if (PortPin_a[pin_number].port != 0) {
+		HAL_GPIO_WritePin(PortPin_a[pin_number].port, PortPin_a[pin_number].pin, state);
+	}
 	osMutexRelease(DigitalPort_MutexID);
 }
 
@@ -463,11 +421,14 @@ void BSP_setDigitalPin(int pin_number, int state) {
  *
  */
 int BSP_getDigitalPin(int pin_number) {
+	int return_value = 0;
+
 	// only one thread is allowed to use the digital port
 	osMutexAcquire(DigitalPort_MutexID, osWaitForever);
 
-	int return_value = HAL_GPIO_ReadPin(PortPin_a[pin_number].port, PortPin_a[pin_number].pin);
-
+	if (PortPin_a[pin_number].port != 0) {
+		return_value = HAL_GPIO_ReadPin(PortPin_a[pin_number].port, PortPin_a[pin_number].pin);
+	}
 	osMutexRelease(DigitalPort_MutexID);
 	return return_value;
 }
@@ -476,12 +437,12 @@ int BSP_getDigitalPin(int pin_number) {
 // analog port pins A0 to A5 (Arduino numbering)
 // *********************************************
 static const uint32_t AnalogPortPin_a[6] = {
-		ADC_CHANNEL_1, // A0 PC0
-		ADC_CHANNEL_2, // A1 PC1
+		0, // A0 PC0
+		0, // A1 PC1
 		ADC_CHANNEL_6, // A2 PA1
 		ADC_CHANNEL_5, // A3 PA0
-		ADC_CHANNEL_4, // A4 PC3
-		ADC_CHANNEL_3   // A5 PC2
+		0, // A4 PC3
+		0   // A5 PC2
 };
 
 /**
@@ -494,25 +455,27 @@ static const uint32_t AnalogPortPin_a[6] = {
  *      12 bit ADC value *
  */
 int BSP_getAnalogPin(int pin_number) {
-	int return_value;
+	int return_value = 0;
 	HAL_StatusTypeDef status;
 
 	// only one thread is allowed to use the ADC
 	osMutexAcquire(Adc_MutexID, osWaitForever);
 
-	sConfig.Channel = AnalogPortPin_a[pin_number];
-	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
-		Error_Handler();
-	}
-	status = HAL_ADC_Start_IT(&hadc1);
-	if (status != HAL_OK) {
-		Error_Handler();
-	}
-	// blocked till ADC conversion is finished
-	status = osSemaphoreAcquire(Adc_SemaphoreID, osWaitForever);
+	if (AnalogPortPin_a[pin_number] != 0) {
+		sConfig.Channel = AnalogPortPin_a[pin_number];
+		if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
+			Error_Handler();
+		}
+		status = HAL_ADC_Start_IT(&hadc1);
+		if (status != HAL_OK) {
+			Error_Handler();
+		}
+		// blocked till ADC conversion is finished
+		status = osSemaphoreAcquire(Adc_SemaphoreID, osWaitForever);
 
-	return_value = HAL_ADC_GetValue(&hadc1);
-	HAL_ADC_Stop_IT(&hadc1);
+		return_value = HAL_ADC_GetValue(&hadc1);
+		HAL_ADC_Stop_IT(&hadc1);
+	}
 
 	osMutexRelease(Adc_MutexID);
 	return return_value;

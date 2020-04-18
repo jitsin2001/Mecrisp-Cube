@@ -1,20 +1,26 @@
-# Mecrisp-Cube
+# Mecrisp-Cube, central branch
 
 Mecrisp-Stellaris Forth for the STM32 Cube ecosystem. 
-The STM32WB Nucleo Board is working out of the box yet. 
+The STM32WB Nucleo Dongle is working out of the box yet.
+ 
+The central branch is tailored for the STM32WB Nucleo Dongle and the BLE GAP 
+Role is central.
+
 
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local 
-machine (STM32 Nucleo board) for development and testing purposes. 
+machine (STM32WB Nucleo Dongle) for development and testing purposes. 
 
 ### Prerequisites
 
-* [STM32WB Nucleo Board](https://www.st.com/en/evaluation-tools/p-nucleo-wb55.html) - 
-  The highly affordable STM32 Nucleo boards allow anyone to try out 
+* [STM32WB Nucleo Dongle](https://www.st.com/en/evaluation-tools/p-nucleo-wb55.html) - 
+  The highly affordable STM32 Nucleo boards/dongles allow anyone to try out 
   new ideas and to quickly create prototypes with any STM32 MCU. 
   The STM32 Nucleo boards integrate an ST-Link debugger/programmer, 
-  so there is no need for a separate probe.
+  so there is no need for a separate probe. The dongle does not have an 
+  integrated ST-Link debugger/programmer. If you want to debug the dongle you 
+  need a ST-LINK probe.
 * Terminal emulator application for PC, e.g.: 
   * [PuTTY](http://www.putty.org/) - Windows and Linux
   * [Tera Term](http://en.sourceforge.jp/projects/ttssh2/) - Windows
@@ -22,11 +28,12 @@ machine (STM32 Nucleo board) for development and testing purposes.
   * minicom, microcom, screen - Linux
   * Use the built in Eclipse console (but no LF)
  
-Flash the Mecrisp-Cube [binary](Release/minimal.bin) to the Nucleo Board.
+Flash the Mecrisp-Cube [binary](Release/minimal.bin) to the Dongle.
 
-1. Connect the Nucleo Board USB ST-LINK to the PC
-2. Copy [binary](Release/minimal.bin) (`minimal.bin`) to the USB mass 
-   storage NODE_WB55RG
+1. Switch the SW2 to the BOOT0 position.
+2. Connect the Dongle USB to the PC
+3. Program the [binary](Release/minimal.bin) (`minimal.bin`) with the 
+   STM32CubProgrammer.
 
 Start the terminal emulator application on the PC. 
 Check for the serial communication port (e.g. for Linux `/dev/ttyACM0`) 
@@ -38,8 +45,8 @@ I set the putty terminal configuration to
   * Local line editing: Auto
   
 ```forth
-Mecrisp-Cube 1.0.0 for STM32WB55 (C) peter@spyr.ch
-Based on Mecrisp-Stellaris 2.5.2 by Matthias Koch
+Mecrisp-Cube 1.0.0 for STM32WB55 (C) peter@spyr.ch.
+Based on Mecrisp-Stellaris 2.5.2 by Matthias Koch.
 23 5 / .<CR> 4  ok.
 : hello ." World" ;<CR>  ok.
 hello<CR> World ok.
@@ -58,7 +65,7 @@ you do not want to use the STM32CubeIDE.
 Get the sources from github:
 
 ```
-psi@homer:~> git clone https://github.com/spyren/Mecrisp-Cube
+psi@homer:~> git clone -branch central https://github.com/spyren/Mecrisp-Cube
 Klone nach 'Mecrisp-Cube' ...
 remote: Enumerating objects: 106, done.
 remote: Counting objects: 100% (106/106), done.

@@ -30,17 +30,26 @@
  *
  ******************************************************************************/
 
- /**
+/**
  * This setting shall be set to '1' if the device needs to support the Peripheral Role
  * In the MS configuration, both BLE_CFG_PERIPHERAL and BLE_CFG_CENTRAL shall be set to '1'
  */
+#if (GATT_CLIENT == 1)
+#define BLE_CFG_PERIPHERAL                                                     0
+#else
 #define BLE_CFG_PERIPHERAL                                                     1
+#endif
 
 /**
  * This setting shall be set to '1' if the device needs to support the Central Role
  * In the MS configuration, both BLE_CFG_PERIPHERAL and BLE_CFG_CENTRAL shall be set to '1'
  */
+#if (GATT_CLIENT == 1)
+#define BLE_CFG_CENTRAL                                                        1
+#else
 #define BLE_CFG_CENTRAL                                                        0
+#endif
+
 
 /**
  * There is one handler per service enabled

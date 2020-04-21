@@ -75,6 +75,12 @@
 #define CFG_MITM_PROTECTION             CFG_MITM_PROTECTION_REQUIRED
 
 /**
+ * Generic Access Appearance
+ */
+#define CFG_UNKNOWN_APPEARANCE                  (0)
+#define CFG_GAP_APPEARANCE                      (CFG_UNKNOWN_APPEARANCE)
+
+/**
  * Define Secure Connections Support
  */
 #define CFG_SECURE_NOT_SUPPORTED       (0x00)
@@ -126,7 +132,12 @@
 #define CFG_BLE_ERK     {0xfe,0xdc,0xba,0x09,0x87,0x65,0x43,0x21,0xfe,0xdc,0xba,0x09,0x87,0x65,0x43,0x21}
 
 /* USER CODE BEGIN Generic_Parameters */
-
+/**
+ * SMPS supply
+ * SMPS not used when Set to 0
+ * SMPS used when Set to 1
+ */
+#define CFG_USE_SMPS    1
 /* USER CODE END Generic_Parameters */
 
 /**< specific parameters */
@@ -137,6 +148,28 @@
 */ 
 /* LSB - Second Byte */
 #define CFG_FEATURE_OTA_REBOOT                  (0x20)
+
+
+/**
+ * This setting shall be set to '1' when the applications provided in the delivery
+ * requires the support of the "Cable replacement client" on the device
+ * This setting shall be set to '0' when the applications provided in the delivery
+ * requires the support of the "Cable replacement Server" on the device
+ */
+#define GATT_CLIENT                                                            1
+
+#define CFG_MAX_CONNECTION                                                   (1)
+
+#define CONN_L(x)                                            ((int)((x)/0.625f))
+#define CONN_P(x)                                            ((int)((x)/1.25f))
+#define SCAN_P                                                           (0x320)
+#define SCAN_L                                                           (0x320)
+#define CONN_P1                                                    (CONN_P(50))
+#define CONN_P2                                                    (CONN_P(100))
+#define SUPERV_TIMEOUT                                                     (400)
+#define CONN_L1                                                     (CONN_L(10))
+#define CONN_L2                                                     (CONN_L(10))
+
 
 /******************************************************************************
  * BLE Stack
@@ -469,37 +502,45 @@ typedef enum
 /******************************************************************************
  * FreeRTOS
  ******************************************************************************/
-#define CFG_SHCI_USER_EVT_PROCESS_NAME        "SHCI_USER_EVT_PROCESS"
-#define CFG_SHCI_USER_EVT_PROCESS_ATTR_BITS   (0)
-#define CFG_SHCI_USER_EVT_PROCESS_CB_MEM      (0)
-#define CFG_SHCI_USER_EVT_PROCESS_CB_SIZE     (0)
-#define CFG_SHCI_USER_EVT_PROCESS_STACK_MEM   (0)
-#define CFG_SHCI_USER_EVT_PROCESS_PRIORITY    osPriorityNone
-#define CFG_SHCI_USER_EVT_PROCESS_STACK_SIZE  (128 * 7)
+#define CFG_SHCI_USER_EVT_THREAD_NAME        "SHCI_USER_EVT_THREAD"
+#define CFG_SHCI_USER_EVT_THREAD_ATTR_BITS   (0)
+#define CFG_SHCI_USER_EVT_THREAD_CB_MEM      (0)
+#define CFG_SHCI_USER_EVT_THREAD_CB_SIZE     (0)
+#define CFG_SHCI_USER_EVT_THREAD_STACK_MEM   (0)
+#define CFG_SHCI_USER_EVT_THREAD_PRIORITY    osPriorityNone
+#define CFG_SHCI_USER_EVT_THREAD_STACK_SIZE  (128 * 7)
 
-#define CFG_HCI_USER_EVT_PROCESS_NAME         "HCI_USER_EVT_PROCESS"
-#define CFG_HCI_USER_EVT_PROCESS_ATTR_BITS    (0)
-#define CFG_HCI_USER_EVT_PROCESS_CB_MEM       (0)
-#define CFG_HCI_USER_EVT_PROCESS_CB_SIZE      (0)
-#define CFG_HCI_USER_EVT_PROCESS_STACK_MEM    (0)
-#define CFG_HCI_USER_EVT_PROCESS_PRIORITY     osPriorityNone
-#define CFG_HCI_USER_EVT_PROCESS_STACK_SIZE   (128 * 8)
+#define CFG_HCI_USER_EVT_THREAD_NAME         "HCI_USER_EVT_THREAD"
+#define CFG_HCI_USER_EVT_THREAD_ATTR_BITS    (0)
+#define CFG_HCI_USER_EVT_THREAD_CB_MEM       (0)
+#define CFG_HCI_USER_EVT_THREAD_CB_SIZE      (0)
+#define CFG_HCI_USER_EVT_THREAD_STACK_MEM    (0)
+#define CFG_HCI_USER_EVT_THREAD_PRIORITY     osPriorityNone
+#define CFG_HCI_USER_EVT_THREAD_STACK_SIZE   (128 * 8)
 
-#define CFG_ADV_UPDATE_PROCESS_NAME           "ADV_UPDATE_PROCESS"
-#define CFG_ADV_UPDATE_PROCESS_ATTR_BITS      (0)
-#define CFG_ADV_UPDATE_PROCESS_CB_MEM         (0)
-#define CFG_ADV_UPDATE_PROCESS_CB_SIZE        (0)
-#define CFG_ADV_UPDATE_PROCESS_STACK_MEM      (0)
-#define CFG_ADV_UPDATE_PROCESS_PRIORITY       osPriorityNone
-#define CFG_ADV_UPDATE_PROCESS_STACK_SIZE     (128 * 6)
+#define CFG_ADV_UPDATE_THREAD_NAME           "ADV_UPDATE_THREAD"
+#define CFG_ADV_UPDATE_THREAD_ATTR_BITS      (0)
+#define CFG_ADV_UPDATE_THREAD_CB_MEM         (0)
+#define CFG_ADV_UPDATE_THREAD_CB_SIZE        (0)
+#define CFG_ADV_UPDATE_THREAD_STACK_MEM      (0)
+#define CFG_ADV_UPDATE_THREAD_PRIORITY       osPriorityNone
+#define CFG_ADV_UPDATE_THREAD_STACK_SIZE     (128 * 6)
 
-#define CFG_HRS_PROCESS_NAME                  "HRS_PROCESS"
-#define CFG_HRS_PROCESS_ATTR_BITS             (0)
-#define CFG_HRS_PROCESS_CB_MEM                (0)
-#define CFG_HRS_PROCESS_CB_SIZE               (0)
-#define CFG_HRS_PROCESS_STACK_MEM             (0)
-#define CFG_HRS_PROCESS_PRIORITY              osPriorityNone
-#define CFG_HRS_PROCESS_STACK_SIZE            (128 * 5)
+#define CFG_SCAN_REQUEST_THREAD_NAME         "SCAN_THREAD"
+#define CFG_SCAN_REQUEST_THREAD_ATTR_BITS    (0)
+#define CFG_SCAN_REQUEST_THREAD_CB_MEM       (0)
+#define CFG_SCAN_REQUEST_THREAD_CB_SIZE      (0)
+#define CFG_SCAN_REQUEST_THREAD_STACK_MEM    (0)
+#define CFG_SCAN_REQUEST_THREAD_PRIORITY     osPriorityNone
+#define CFG_SCAN_REQUEST_THREAD_STACK_SIZE   (128 * 5)
+
+#define CFG_CONNECT_REQUEST_THREAD_NAME      "CONNECT_THREAD"
+#define CFG_CONNECT_REQUEST_THREAD_ATTR_BITS (0)
+#define CFG_CONNECT_REQUEST_THREAD_CB_MEM    (0)
+#define CFG_CONNECT_REQUEST_THREAD_CB_SIZE   (0)
+#define CFG_CONNECT_REQUEST_THREAD_STACK_MEM (0)
+#define CFG_CONNECT_REQUEST_THREAD_PRIORITY  osPriorityNone
+#define CFG_CONNECT_REQUEST_THREAD_STACK_SIZE (128 * 5)
 
 /* USER CODE BEGIN FreeRTOS_Defines */
 

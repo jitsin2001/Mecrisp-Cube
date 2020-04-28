@@ -38,6 +38,7 @@
 #include "app_common.h"
 #include "main.h"
 #include "crc_app.h"
+#include "app_ble.h"
 
 #include "dbg_trace.h"
 #include "ble.h"
@@ -194,45 +195,36 @@ static void CRCAPP_Write_Char(uint8_t index) {
 
 	con_index = 0;
 	while((con_index < CFG_MAX_CONNECTION) &&
-			(CRC_Context[con_index].state != CRC_IDLE))
-	{
-		switch(index)
-		{
+			(CRC_Context[con_index].state != CRC_IDLE)) {
+		switch(index) {
 		case WRITE_TX:
-		{
 			APP_DBG_MSG("WRITE_TX\n");
-			if(CRC_Context[con_index].TXCharHdle > 0)
-			{
+			if(CRC_Context[con_index].TXCharHdle > 0) {
 				CRC_Context[con_index].state = CRC_WRITE_TX;
 				APP_DBG_MSG("CRC_CONNECTED -> CRC_WRITE_TX\n");
-				UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+				//	UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
 			}
-		}
-		break;
+			break;
 
 		case WRITE_ENABLE_RX_NOTIFICATION:
-		{
 			APP_DBG_MSG("WRITE_ENABLE_RX_NOTIFICATION\n");
-			if(CRC_Context[con_index].RXCharHdle > 0)
-			{
+			if(CRC_Context[con_index].RXCharHdle > 0) {
 				CRC_Context[con_index].state = CRC_ENABLE_RX_NOTIFICATION;
 				APP_DBG_MSG("CRC_CONNECTED -> CRC_ENABLE_RX_NOTIFICATION\n");
-				UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+//				UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+				// ??
 			}
-		}
-		break;
+			break;
 
 		case WRITE_DISABLE_RX_NOTIFICATION:
-		{
 			APP_DBG_MSG("WRITE_DISABLE_RX_NOTIFICATION\n");
-			if(CRC_Context[con_index].RXCharHdle > 0)
-			{
+			if(CRC_Context[con_index].RXCharHdle > 0) {
 				CRC_Context[con_index].state = CRC_DISABLE_RX_NOTIFICATION;
 				APP_DBG_MSG("CRC_CONNECTED -> CRC_DISABLE_RX_NOTIFICATION\n");
-				UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+//				UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+				// ??
 			}
-		}
-		break;
+			break;
 
 		default:
 			break;
@@ -257,19 +249,15 @@ static SVCCTL_EvtAckStatus_t CRCAPP_Event_Handler(void *Event) {
 	return_value = SVCCTL_EvtNotAck;
 	event_pckt = (hci_event_pckt *)(((hci_uart_pckt*)Event)->data);
 
-	switch(event_pckt->evt)
-	{
+	switch(event_pckt->evt) {
 	case EVT_VENDOR:
-	{
 		blue_evt = (evt_blue_aci*)event_pckt->data;
 
 		APP_DBG_MSG("EVT_VENDOR: 0x%x!\n",
 				blue_evt->ecode);
 
-		switch(blue_evt->ecode)
-		{
-		case EVT_BLUE_ATT_READ_BY_GROUP_TYPE_RESP:
-		{
+		switch(blue_evt->ecode) {
+		case EVT_BLUE_ATT_READ_BY_GROUP_TYPE_RESP: {
 			aci_att_read_by_group_type_resp_event_rp0 *pr = (void*)blue_evt->data;
 			uint8_t numServ, i, idx;
 			uint16_t handle;
@@ -278,17 +266,16 @@ static SVCCTL_EvtAckStatus_t CRCAPP_Event_Handler(void *Event) {
 			handle = pr->Connection_Handle;
 			index = 0;
 			while((index < CFG_MAX_CONNECTION) &&
-					(CRC_Context[index].state != CRC_IDLE))
-			{
+					(CRC_Context[index].state != CRC_IDLE)) {
 				APP_BLE_ConnStatus_t status;
 
-				status = APP_BLE_Get_Client_Connection_Status(CRC_Context[index].connHandle);
+//				status = APP_BLE_Get_Client_Connection_Status(CRC_Context[index].connHandle);
+				// Server_Connection ??
 				APP_DBG_MSG("Handle 0x%x status: %d !\n",
 						CRC_Context[index].connHandle, status);
 				if(((CRC_Context[index].state == CRC_CONNECTED) ||
 						(CRC_Context[index].state == CRC_CONNECTED_ADVERTISING))&&
-						(status == APP_BLE_IDLE))
-				{
+						(status == APP_BLE_IDLE)) {
 					/* Handle deconnected */
 					APP_DBG_MSG("Handle 0x%x no more connected, connection table updated !\n",
 							CRC_Context[index].connHandle);
@@ -300,8 +287,7 @@ static SVCCTL_EvtAckStatus_t CRCAPP_Event_Handler(void *Event) {
 				index++;
 			}
 
-			if(index < CFG_MAX_CONNECTION)
-			{
+			if(index < CFG_MAX_CONNECTION) {
 				CRC_Context[index].connHandle = handle;
 
 				APP_DBG_MSG("New handle 0x%x in connection table index: %d!\n",
@@ -315,26 +301,21 @@ static SVCCTL_EvtAckStatus_t CRCAPP_Event_Handler(void *Event) {
 				 * we are interested only if the UUID is 128 bits.
 				 * So check if the data length is 20
 				 */
-				if (pr->Attribute_Data_Length == 20)
-				{
+				if (pr->Attribute_Data_Length == 20) {
 					idx = 16;
-					for (i = 0; i < numServ; i++)
-					{
+					for (i = 0; i < numServ; i++) {
 						uint8_t j;
 						uint8_t service_uuid[] = { CRS_STM_UUID128 };
 						uint8_t result = TRUE;
 
-						for(j = 0; j < pr->Attribute_Data_Length - 4; j++)
-						{
-							if(pr->Attribute_Data_List[j+4] != service_uuid[(pr->Attribute_Data_Length-5) - j])
-							{
+						for(j = 0; j < pr->Attribute_Data_Length - 4; j++) {
+							if(pr->Attribute_Data_List[j+4] != service_uuid[(pr->Attribute_Data_Length-5) - j]) {
 								result = FALSE;
 								APP_DBG_MSG("Service UUID is not a Cable Replacement Service\n");
 								break;
 							}
 						}
-						if(result == TRUE)
-						{
+						if(result == TRUE) {
 							APP_DBG_MSG("EVT_BLUE_ATT_READ_BY_GROUP_TYPE_RESP, first index in CRC_IDLE state: %d\n", index);
 
 							CRC_Context[index].ServiceHandle =
@@ -351,16 +332,13 @@ static SVCCTL_EvtAckStatus_t CRCAPP_Event_Handler(void *Event) {
 						idx += 20;
 					}
 				}
-			}
-			else
-			{
+			} else {
 				APP_DBG_MSG("EVT_BLUE_ATT_READ_BY_GROUP_TYPE_RESP, failed no free index in connection table !\n");
 			}
 		}
 		break; /*EVT_BLUE_ATT_READ_BY_GROUP_TYPE_RESP*/
 
-		case EVT_BLUE_ATT_READ_BY_TYPE_RESP:
-		{
+		case EVT_BLUE_ATT_READ_BY_TYPE_RESP: {
 			aci_att_read_by_type_resp_event_rp0 *pr = (void*)blue_evt->data;
 			uint8_t idx;
 			uint16_t handle;
@@ -368,16 +346,15 @@ static SVCCTL_EvtAckStatus_t CRCAPP_Event_Handler(void *Event) {
 
 			index = 0;
 			while((index < CFG_MAX_CONNECTION) &&
-					(CRC_Context[index].connHandle != pr->Connection_Handle))
+					(CRC_Context[index].connHandle != pr->Connection_Handle)) {
 				index++;
+			}
 
-			if(index < CFG_MAX_CONNECTION)
-			{
+			if(index < CFG_MAX_CONNECTION) {
 				handle = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[0]);
 				if((CRC_Context[index].state == CRC_DISCOVER_CHARACS) &&
 						(handle >= CRC_Context[index].ServiceHandle) &&
-						(handle <= CRC_Context[index].ServiceEndHandle))
-				{
+						(handle <= CRC_Context[index].ServiceEndHandle)) {
 					/* Event for CRC Client */
 					APP_DBG_MSG("EVT_BLUE_ATT_READ_BY_TYPE_RESP\n");
 
@@ -389,39 +366,34 @@ static SVCCTL_EvtAckStatus_t CRCAPP_Event_Handler(void *Event) {
 					 */
 					idx = 17;
 					/* we are interested in only 128 bits UUIDs */
-					if (pr->Handle_Value_Pair_Length == 21)
-					{
-						while(pr->Data_Length > 0)
-						{
+					if (pr->Handle_Value_Pair_Length == 21) {
+						while(pr->Data_Length > 0) {
 							uint8_t tx_uuid[] = { CRS_STM_TX_UUID128 };
 							uint8_t rx_uuid[] = { CRS_STM_RX_UUID128 };
 							uint8_t i, result = TX_CHAR | RX_CHAR;
 
 							/* store the characteristic handle not the attribute handle */
 							handle = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-14]);
-							for(i = 0; i < pr->Handle_Value_Pair_Length - 5; i++)
-							{
-								if(pr->Handle_Value_Pair_Data[i+5] != tx_uuid[(pr->Handle_Value_Pair_Length-6) - i])
-								{
+							for(i = 0; i < pr->Handle_Value_Pair_Length - 5; i++) {
+								if(pr->Handle_Value_Pair_Data[i+5] != tx_uuid[(pr->Handle_Value_Pair_Length-6) - i]) {
 									APP_DBG_MSG("Characteristic UUID is not a Tx UUID Characteristic\n");
 									APP_DBG_MSG("pr->Handle_Value_Pair_Data[i+5]: 0x%x != tx_uuid[(pr->Handle_Value_Pair_Length-6) - i]: 0x%x\n",
 											pr->Handle_Value_Pair_Data[i+5],
 											tx_uuid[(pr->Handle_Value_Pair_Length-6) - i]);
 									result &= RX_CHAR;    /* Not a TX Characteristic */
 								}
-								if(pr->Handle_Value_Pair_Data[i+5] != rx_uuid[(pr->Handle_Value_Pair_Length-6) - i])
-								{
+								if(pr->Handle_Value_Pair_Data[i+5] != rx_uuid[(pr->Handle_Value_Pair_Length-6) - i]) {
 									APP_DBG_MSG("Characteristic UUID is not a Rx UUID Characteristic\n");
 									APP_DBG_MSG("pr->Handle_Value_Pair_Data[i+5]: 0x%x != rx_uuid[(pr->Handle_Value_Pair_Length-6) - i]: 0x%x\n",
 											pr->Handle_Value_Pair_Data[i+5],
 											rx_uuid[(pr->Handle_Value_Pair_Length-6) - i]);
 									result &= TX_CHAR;   /* Not a RX Characteristic */
 								}
-								if(result == 0)
+								if(result == 0) {
 									break;
+								}
 							}
-							if(result == TX_CHAR)
-							{
+							if(result == TX_CHAR) {
 								APP_DBG_MSG("*************************************************************************************************************************\n");
 								APP_DBG_MSG("TX start handle 0x%04x\n", UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-17]));
 								APP_DBG_MSG("TX properties   0x%02x\n", pr->Handle_Value_Pair_Data[idx-15]);
@@ -433,8 +405,7 @@ static SVCCTL_EvtAckStatus_t CRCAPP_Event_Handler(void *Event) {
 								CRC_Context[index].TXCharHdle = handle;
 							}
 
-							if(result == RX_CHAR)
-							{
+							if(result == RX_CHAR) {
 								APP_DBG_MSG("*************************************************************************************************************************\n");
 								APP_DBG_MSG("RX start handle 0x%04x\n", UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-17]));
 								APP_DBG_MSG("RX properties   0x%02x\n", pr->Handle_Value_Pair_Data[idx-15]);
@@ -450,16 +421,13 @@ static SVCCTL_EvtAckStatus_t CRCAPP_Event_Handler(void *Event) {
 						} /* end while(pr->Event_Data_Length > 0) */
 					} /* end if (pr->Handle_Value_Pair_Data == 21) */
 				} /* end if(CRC_Context[index].state ... */
-			} /* if(index < CFG_MAX_CONNECTION) */
-			else
-			{
+			} else {
 				APP_DBG_MSG("EVT_BLUE_ATT_READ_BY_TYPE_RESP, failed handle not found in connection table !\n");
-			}
+			} /* if(index < CFG_MAX_CONNECTION) */
 		}
 		break; /*EVT_BLUE_ATT_READ_BY_TYPE_RESP*/
 
-		case EVT_BLUE_ATT_FIND_INFORMATION_RESP:
-		{
+		case EVT_BLUE_ATT_FIND_INFORMATION_RESP: {
 			aci_att_find_info_resp_event_rp0 *pr = (void*)blue_evt->data;
 			uint8_t numDesc, idx, i;
 			uint16_t uuid, handle;
@@ -467,16 +435,15 @@ static SVCCTL_EvtAckStatus_t CRCAPP_Event_Handler(void *Event) {
 
 			index = 0;
 			while((index < CFG_MAX_CONNECTION) &&
-					(CRC_Context[index].connHandle != pr->Connection_Handle))
+					(CRC_Context[index].connHandle != pr->Connection_Handle)) {
 				index++;
+			}
 
-			if(index < CFG_MAX_CONNECTION)
-			{
+			if(index < CFG_MAX_CONNECTION) {
 				handle = UNPACK_2_BYTE_PARAMETER(&pr->Handle_UUID_Pair[0]);
 				if((CRC_Context[index].state == CRC_DISCOVER_DESC) &&
 						(handle >= CRC_Context[index].ServiceHandle) &&
-						(handle <= CRC_Context[index].ServiceEndHandle))
-				{
+						(handle <= CRC_Context[index].ServiceEndHandle)) {
 					/* Event for CRC Client */
 					APP_DBG_MSG("EVT_BLUE_ATT_FIND_INFORMATION_RESP\n");
 
@@ -492,19 +459,15 @@ static SVCCTL_EvtAckStatus_t CRCAPP_Event_Handler(void *Event) {
 
 					/* we are interested only in 16 bit UUIDs */
 					idx = 0;
-					if (pr->Format == UUID_TYPE_16)
-					{
-						for (i = 0; i < numDesc; i++)
-						{
+					if (pr->Format == UUID_TYPE_16) {
+						for (i = 0; i < numDesc; i++) {
 							handle = UNPACK_2_BYTE_PARAMETER(&pr->Handle_UUID_Pair[idx]);
 							uuid = UNPACK_2_BYTE_PARAMETER(&pr->Handle_UUID_Pair[idx+2]);
 
 							APP_DBG_MSG("UUID: 0x%x Handle: 0x%x\n", uuid, handle);
 
-							if(uuid == CLIENT_CHAR_CONFIG_DESCRIPTOR_UUID)
-							{
-								if( (CRC_Context[index].RXCharHdle)+1 == handle)
-								{
+							if(uuid == CLIENT_CHAR_CONFIG_DESCRIPTOR_UUID) {
+								if( (CRC_Context[index].RXCharHdle)+1 == handle) {
 									APP_DBG_MSG("*************************************************************************************************************************\n");
 									APP_DBG_MSG("RX Client Characteristic Configuration Desc handle 0x%04x\n", handle);
 									APP_DBG_MSG("RX Client Characteristic Configuration Desc uuid   0x%04x\n", uuid);
@@ -516,28 +479,24 @@ static SVCCTL_EvtAckStatus_t CRCAPP_Event_Handler(void *Event) {
 						} /* end for (i = 0; i < numDesc; i++) */
 					} /* end if (pr->Format == UUID_TYPE_16) */
 				} /* end if(CRC_Context[index].connHandle == pr->Connection_Handle) */
-			}
-			else
-			{
+			} else {
 				APP_DBG_MSG("EVT_BLUE_ATT_FIND_INFORMATION_RESP, failed handle not found in connection table !\n");
 			}
 		}
 		break; /*EVT_BLUE_ATT_FIND_INFORMATION_RESP*/
 
-		case EVT_BLUE_ATT_READ_RESP:
-		{
+		case EVT_BLUE_ATT_READ_RESP: {
 			aci_att_read_resp_event_rp0 *pr = (void*)blue_evt->data;
 			uint8_t index;
 
 			index = 0;
 			while((index < CFG_MAX_CONNECTION) &&
-					(CRC_Context[index].connHandle != pr->Connection_Handle))
+					(CRC_Context[index].connHandle != pr->Connection_Handle)) {
 				index++;
+			}
 
-			if(index < CFG_MAX_CONNECTION)
-			{
-				if(CRC_Context[index].state == CRC_READ_TX)
-				{
+			if(index < CFG_MAX_CONNECTION) {
+				if(CRC_Context[index].state == CRC_READ_TX) {
 					/* Event for CR Client */
 					APP_DBG_MSG("EVT_BLUE_ATT_READ_RESP\n");
 					waitForComplete = 1;
@@ -545,9 +504,7 @@ static SVCCTL_EvtAckStatus_t CRCAPP_Event_Handler(void *Event) {
 					APP_DBG_MSG("CRC TX 0x%x:\n",
 							CRC_Context[index].TXCharHdle);
 					APP_DBG_MSG("*************************************************************************************************************************\n");
-				}
-				else if(CRC_Context[index].state == CRC_READ_RX)
-				{
+				} else if(CRC_Context[index].state == CRC_READ_RX) {
 					/* Event for CR Client */
 					APP_DBG_MSG("EVT_BLUE_ATT_READ_RESP\n");
 					waitForComplete = 1;
@@ -555,9 +512,7 @@ static SVCCTL_EvtAckStatus_t CRCAPP_Event_Handler(void *Event) {
 					APP_DBG_MSG("CRC RX 0x%x:\n",
 							CRC_Context[index].RXCharHdle);
 					APP_DBG_MSG("*************************************************************************************************************************\n");
-				}
-				else if(CRC_Context[index].state == CRC_READ_RX_CCC)
-				{
+				} else if(CRC_Context[index].state == CRC_READ_RX_CCC) {
 					/* Event for CR Client */
 					APP_DBG_MSG("EVT_BLUE_ATT_READ_RESP\n");
 					waitForComplete = 1;
@@ -567,35 +522,30 @@ static SVCCTL_EvtAckStatus_t CRCAPP_Event_Handler(void *Event) {
 							pr->Attribute_Value[0] + (pr->Attribute_Value[1] << 8));
 					APP_DBG_MSG("*************************************************************************************************************************\n");
 				}
-			}
-			else
-			{
+			} else {
 				APP_DBG_MSG("EVT_BLUE_ATT_READ_RESP, failed handle not found in connection table !\n");
 			}
 		}
 		break; /*EVT_BLUE_ATT_READ_RESP*/
 
-		case EVT_BLUE_GATT_NOTIFICATION:
-		{
+		case EVT_BLUE_GATT_NOTIFICATION: {
 			aci_gatt_notification_event_rp0 *pr = (void*)blue_evt->data;
 			uint8_t index;
 
 			index = 0;
 			while((index < CFG_MAX_CONNECTION) &&
-					(CRC_Context[index].connHandle != pr->Connection_Handle))
+					(CRC_Context[index].connHandle != pr->Connection_Handle)) {
 				index++;
+			}
 
-			if(index < CFG_MAX_CONNECTION)
-			{
+			if(index < CFG_MAX_CONNECTION) {
 				if((pr->Attribute_Handle >= CRC_Context[index].ServiceHandle) &&
-						(pr->Attribute_Handle <= CRC_Context[index].ServiceEndHandle))
-				{
+						(pr->Attribute_Handle <= CRC_Context[index].ServiceEndHandle)) {
 					/* Event for CRC Client */
 					APP_DBG_MSG("EVT_BLUE_GATT_NOTIFICATION on connection handle 0x%x\n",
 							pr->Connection_Handle);
 					waitForComplete = 1;
-					if(pr->Attribute_Handle == CRC_Context[index].RXCharHdle)
-					{
+					if(pr->Attribute_Handle == CRC_Context[index].RXCharHdle) {
 						uint8_t text[21], i;
 
 						/* the event buffer will have the data as follows:
@@ -606,160 +556,149 @@ static SVCCTL_EvtAckStatus_t CRCAPP_Event_Handler(void *Event) {
 						 * as the string
 						 */
 						APP_DBG_MSG("pr->Attribute_Value_Length %d\n", pr->Attribute_Value_Length);
-						for(i = 0; i < pr->Attribute_Value_Length; i++)
+						for(i = 0; i < pr->Attribute_Value_Length; i++) {
 							text[i] = pr->Attribute_Value[i];
+						}
 						text[pr->Attribute_Value_Length] = '\0';
 						APP_DBG_MSG("*************************************************************************************************************************\n");
 						APP_DBG_MSG("%s\n", &(text[0]));
 						APP_DBG_MSG("*************************************************************************************************************************\n");
-						PrintPcCrt(PosXRx, PosYRx, "%s", &(text[0]));
+//						PrintPcCrt(PosXRx, PosYRx, "%s", &(text[0]));
+						// ??
 					}
 				}
-			}
-			else
-			{
+			} else {
 				APP_DBG_MSG("EVT_BLUE_GATT_NOTIFICATION, failed handle not found in connection table !\n");
 			}
 		}
 		break; /*EVT_BLUE_GATT_INDICATION*/
 
-		case EVT_BLUE_GATT_PROCEDURE_COMPLETE:
-		{
+		case EVT_BLUE_GATT_PROCEDURE_COMPLETE: {
 			aci_gatt_proc_complete_event_rp0 *pr = (void*)blue_evt->data;
 
-			if(waitForComplete != 0)
-			{
+			if(waitForComplete != 0) {
 				uint8_t index;
 
 				index = 0;
 				while((index < CFG_MAX_CONNECTION) &&
-						(CRC_Context[index].connHandle != pr->Connection_Handle))
+						(CRC_Context[index].connHandle != pr->Connection_Handle)) {
 					index++;
+				}
 
-				if(index < CFG_MAX_CONNECTION)
-				{
+				if(index < CFG_MAX_CONNECTION) {
 					waitForComplete = 0;
 					/* Event for CR Client */
 					APP_DBG_MSG("EVT_BLUE_GATT_PROCEDURE_COMPLETE\n");
 
-					switch(CRC_Context[index].state)
-					{
-					case CRC_IDLE:
-					{
+					switch(CRC_Context[index].state) {
+					case CRC_IDLE: {
 						CRC_Context[index].state = CRC_DISCOVER_CHARACS;
 						APP_DBG_MSG("CRC_IDLE -> CRC_DISCOVER_CHARACS\n");
-						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+//						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+						// ??
 					}
 					break;
 
-					case CRC_DISCOVER_CHARACS:
-					{
+					case CRC_DISCOVER_CHARACS: {
 						CRC_Context[index].state = CRC_DISCOVER_DESC;
 						APP_DBG_MSG("CRC_DISCOVER_CHARACS -> CRC_DISCOVER_DESC\n");
-						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+//						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+						// ??
 					}
 					break;
 
-					case CRC_DISCOVER_DESC:
-					{
+					case CRC_DISCOVER_DESC: {
 						CRC_Context[index].state = CRC_ENABLE_RX_NOTIFICATION;
 						APP_DBG_MSG("CRC_DISCOVER_DESC -> CRC_ENABLE_RX_NOTIFICATION\n");
-						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+//						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+						// ??
 					}
 					break;
 
-					case CRC_READ_TX:
-					{
+					case CRC_READ_TX: {
 						CRC_Context[index].state = CRC_CONNECTED;
 						APP_DBG_MSG("CRC_READ_TX -> CRC_CONNECTED\n");
-						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+//						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+						// ??
 					}
 					break;
 
-					case CRC_READ_RX:
-					{
+					case CRC_READ_RX: {
 						CRC_Context[index].state = CRC_CONNECTED;
 						APP_DBG_MSG("CRC_READ_RX -> CRC_CONNECTED\n");
-						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+//						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+						// ??
 					}
 					break;
 
 
-					case CRC_READ_RX_CCC:
-					{
+					case CRC_READ_RX_CCC: {
 						CRC_Context[index].state = CRC_CONNECTED;
 						APP_DBG_MSG("CRC_READ_RX_CCC -> CRC_CONNECTED\n");
-						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+//						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+						// ??
 					}
 					break;
 
-					case CRC_WRITE_TX:
-					{
+					case CRC_WRITE_TX: {
 						CRC_Context[index].state = CRC_CONNECTED;
 						APP_DBG_MSG("CRC_WRITE_TX -> CRC_CONNECTED\n");
-						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+//						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+						// ??
 					}
 					break;
 
-					case CRC_ENABLE_RX_NOTIFICATION:
-					{
+					case CRC_ENABLE_RX_NOTIFICATION: {
 						CRC_Context[index].state = CRC_CONNECTED;
 						APP_DBG_MSG("CRC_ENABLE_RX_NOTIFICATION -> CRC_CONNECTED\n");
-						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+//						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+						// ??
 					}
 					break;
 
-					case CRC_DISABLE_RX_NOTIFICATION:
-					{
+					case CRC_DISABLE_RX_NOTIFICATION: {
 						CRC_Context[index].state = CRC_CONNECTED;
 						APP_DBG_MSG("CRC_DISABLE_RX_NOTIFICATION -> CRC_CONNECTED\n");
-						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+//						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+						// ??
 					}
 					break;
 
 					default:
 						break;
-					}
-				}
-				else
-				{
+					} // switch CRC_Context[index].state
+				} else {
 					APP_DBG_MSG("EVT_BLUE_GATT_PROCEDURE_COMPLETE failed, not found handle in connection table !\n");
 				}
 			}
 		}
 		break; /*EVT_BLUE_GATT_PROCEDURE_COMPLETE*/
 
-		case EVT_BLUE_GATT_ERROR_RESP:
-		{
+		case EVT_BLUE_GATT_ERROR_RESP: {
 			aci_gatt_error_resp_event_rp0 *pr = (void*)blue_evt->data;
 			uint8_t index;
 
 			index = 0;
 			while((index < CFG_MAX_CONNECTION) &&
-					(CRC_Context[index].connHandle != pr->Connection_Handle))
+					(CRC_Context[index].connHandle != pr->Connection_Handle)) {
 				index++;
+			}
 
-			if(index < CFG_MAX_CONNECTION)
-			{
+			if(index < CFG_MAX_CONNECTION) {
 				if((CRC_Context[index].state == CRC_DISCOVER_CHARACS) &&
 						(waitForComplete == 0) &&
 						(pr->Attribute_Handle >= CRC_Context[index].ServiceHandle) &&
-						(pr->Attribute_Handle <= CRC_Context[index].ServiceEndHandle))
-				{
+						(pr->Attribute_Handle <= CRC_Context[index].ServiceEndHandle)) {
 					APP_DBG_MSG("EVT_BLUE_GATT_ERROR_RESP\n");
 					waitForComplete = 1;
-				}
-				else if((CRC_Context[index].state == CRC_IDLE) &&
+				} else if((CRC_Context[index].state == CRC_IDLE) &&
 						(waitForComplete == 0) &&
 						(pr->Attribute_Handle >= CRC_Context[index].ServiceHandle) &&
-						(pr->Attribute_Handle <= CRC_Context[index].ServiceEndHandle))
-				{
+						(pr->Attribute_Handle <= CRC_Context[index].ServiceEndHandle)) {
 					APP_DBG_MSG("EVT_BLUE_GATT_ERROR_RESP\n");
 					waitForComplete = 1;
 				}
-			}
-			else
-			{
+			} else {
 				APP_DBG_MSG("EVT_BLUE_GATT_ERROR_RESP, not found handle in connection table !\n");
 			}
 		}
@@ -767,7 +706,6 @@ static SVCCTL_EvtAckStatus_t CRCAPP_Event_Handler(void *Event) {
 
 		default:
 			break;
-		}
 	}
 	break; /* HCI_EVT_VENDOR_SPECIFIC */
 
@@ -835,8 +773,7 @@ void CRCAPP_Init(void) {
  * @param  None
  * @retval None
  */
-void CRCAPP_Update_Service()
-{
+void CRCAPP_Update_Service() {
 	tBleStatus result;
 	uint8_t index;
 
@@ -844,8 +781,7 @@ void CRCAPP_Update_Service()
 	while ((index < CFG_MAX_CONNECTION) &&
 			(CRC_Context[index].state != CRC_IDLE)) {
 		switch (CRC_Context[index].state) {
-		case CRC_CONNECTED:
-		{
+		case CRC_CONNECTED: {
 			APP_DBG_MSG("CRC_CONNECTED\n");
 			if (APP_BLE_Get_Client_Connection_Status(CRC_Context[index].connHandle) == APP_BLE_IDLE) {
 				APP_DBG_MSG("Handle deconnected !\n");
@@ -855,8 +791,7 @@ void CRCAPP_Update_Service()
 		}
 		break;
 
-		case CRC_DISCOVER_CHARACS:
-		{
+		case CRC_DISCOVER_CHARACS:{
 			APP_DBG_MSG("CRC_DISCOVER_CHARACS\n");
 
 			result = aci_gatt_disc_all_char_of_service(CRC_Context[index].connHandle,
@@ -876,8 +811,7 @@ void CRCAPP_Update_Service()
 		}
 		break;
 
-		case CRC_DISCOVER_DESC:
-		{
+		case CRC_DISCOVER_DESC: {
 			APP_DBG_MSG("CRC_DISCOVER_DESC\n");
 
 			result = aci_gatt_disc_all_char_desc(CRC_Context[index].connHandle,
@@ -897,8 +831,7 @@ void CRCAPP_Update_Service()
 		}
 		break;
 
-		case CRC_READ_RX:
-		{
+		case CRC_READ_RX: {
 			APP_DBG_MSG("CRC_READ_TEMPERATURE_TYPE\n");
 
 			result = aci_gatt_read_char_value(CRC_Context[index].connHandle,
@@ -916,8 +849,7 @@ void CRCAPP_Update_Service()
 		}
 		break;
 
-		case CRC_READ_TX:
-		{
+		case CRC_READ_TX: {
 			APP_DBG_MSG("CRC_READ_TX\n");
 
 			result = aci_gatt_read_char_value(CRC_Context[index].connHandle,
@@ -935,8 +867,7 @@ void CRCAPP_Update_Service()
 		}
 		break;
 
-		case CRC_READ_RX_CCC:
-		{
+		case CRC_READ_RX_CCC: {
 			APP_DBG_MSG("CRC_READ_TEMPERATURE_MEASUREMENT_CCC\n");
 
 			result = aci_gatt_read_char_desc(CRC_Context[index].connHandle,
@@ -954,8 +885,7 @@ void CRCAPP_Update_Service()
 		}
 		break;
 
-		case CRC_WRITE_TX:
-		{
+		case CRC_WRITE_TX: {
 			APP_DBG_MSG("CRC_WRITE_TX\n");
 
 			result = aci_gatt_write_without_resp(CRC_Context[index].connHandle,
@@ -967,7 +897,8 @@ void CRCAPP_Update_Service()
 				APP_DBG_MSG("Write CRC TX sent Successfully \n");
 				CRC_Context[index].state = CRC_CONNECTED;
 				APP_DBG_MSG("CRC_WRITE_TX -> CRC_CONNECTED\n");
-				UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+//				UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+				// ??
 			} else {
 				APP_DBG_MSG("Write TX sent Failed \n");
 				if (result == BLE_STATUS_NOT_ALLOWED) {
@@ -979,8 +910,7 @@ void CRCAPP_Update_Service()
 		}
 		break;
 
-		case CRC_ENABLE_RX_NOTIFICATION:
-		{
+		case CRC_ENABLE_RX_NOTIFICATION: {
 			uint8_t notification[2] = {0x01, 0x00};
 
 			APP_DBG_MSG("CRC_ENABLE_RX_NOTIFICATION\n");
@@ -1004,8 +934,7 @@ void CRCAPP_Update_Service()
 		}
 		break;
 
-		case CRC_DISABLE_RX_NOTIFICATION:
-		{
+		case CRC_DISABLE_RX_NOTIFICATION: {
 			uint8_t notification[2] = {0x00, 0x00};
 
 			APP_DBG_MSG("CRC_DISABLE_RX_NOTIFICATION\n");
@@ -1038,7 +967,7 @@ void CRCAPP_Update_Service()
 
 /**
  *  @brief
- *		Reads a char from the CRC Rx (serial in). Blocking until char is
+ *		Reads a char from the CRS Rx (serial in). Blocking until char is
  *      ready.
  *  @return
  *      Return the character read as an unsigned char cast to an int or EOF on
@@ -1072,7 +1001,7 @@ int CRCAPP_RxReady(void) {
 
 /**
  *  @brief
- *      Writes a char to the CRC Tx (serial out). Blocking until char can be
+ *      Writes a char to the CRS Tx (serial out). Blocking until char can be
  *      written into the queue.
  *  @param[in]
  *      c  char to write
@@ -1176,7 +1105,7 @@ static void CRC_Thread(void *argument) {
 			buffer[count+1] = '\0';
 			// send the characters
 //			status = CRSAPP_Update_Char(CRC_RX_CHAR_UUID, (uint8_t *)&buffer[0]);
-			CRCAPP_Write_Char(index)
+			CRCAPP_Write_Char(index);
 			if (status != BLE_STATUS_SUCCESS) {
 				// can't send char
 				Error_Handler();

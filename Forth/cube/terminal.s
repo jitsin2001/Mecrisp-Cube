@@ -127,7 +127,7 @@ crs_emit:
 	push	{r0-r3, lr}
 	movs	r0, tos
 	drop
-	bl		CRSAPP_putc
+	bl		CRCAPP_putc
 	pop		{r0-r3, pc}
 
 @ -----------------------------------------------------------------------------
@@ -137,7 +137,7 @@ crs_key:
 @ -----------------------------------------------------------------------------
 	push	{r0-r3, lr}
 	pushdatos
-	bl		CRSAPP_getc
+	bl		CRCAPP_getc
 	movs	tos, r0
 	pop		{r0-r3, pc}
 
@@ -148,7 +148,7 @@ crs_qemit:
 @ -----------------------------------------------------------------------------
 	push	{r0-r3, lr}
 	pushdatos
-	bl		CRSAPP_TxReady
+	bl		CRCAPP_TxReady
 	movs	tos, r0
 	pop		{r0-r3, pc}
 
@@ -159,7 +159,7 @@ crs_qkey:
 @ -----------------------------------------------------------------------------
 	push	{r0-r3, lr}
 	pushdatos
-	bl		CRSAPP_RxReady
+	bl		CRCAPP_RxReady
 	movs	tos, r0
 	pop		{r0-r3, pc}
 

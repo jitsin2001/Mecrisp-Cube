@@ -38,6 +38,11 @@ extern "C"
 /* Exported functions ------------------------------------------------------- */
 void CRCAPP_Init(void);
 void CRCAPP_Update_Service(void);
+int CRCAPP_getc(void);
+int CRCAPP_RxReady(void);
+int CRCAPP_putc(int c);
+int CRCAPP_TxReady(void);
+
 
 
 #ifdef __cplusplus

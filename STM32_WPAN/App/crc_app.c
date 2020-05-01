@@ -50,10 +50,13 @@
 #define CRC_TX_BUFFER_LENGTH	1024
 #define CRC_RX_BUFFER_LENGTH	1024
 
+#define SERVICE_REQUEST			1
+
 
 // Private function prototypes
 // ***************************
 static void CRC_Thread(void *argument);
+static void CRC_ServiceThread(void *argument);
 
 // Global Variables
 // ****************
@@ -68,6 +71,15 @@ static const osThreadAttr_t crc_ThreadAttr = {
 		.priority = (osPriority_t) osPriorityHigh,
 		.stack_size = 512 * 2
 };
+
+// Definitions for CRC_ServiceThread
+static osThreadId_t CRC_ServiceThreadId;
+static const osThreadAttr_t service_ThreadAttr = {
+		.name = "CrcService_Thread",
+		.priority = (osPriority_t) osPriorityHigh,
+		.stack_size = 512 * 2
+};
+
 
 static osMutexId_t CRC_MutexID;
 const osMutexAttr_t CRC_MutexAttr = {
@@ -202,7 +214,7 @@ static void CRCAPP_Write_Char(uint8_t index) {
 			if(CRC_Context[con_index].TXCharHdle > 0) {
 				CRC_Context[con_index].state = CRC_WRITE_TX;
 				APP_DBG_MSG("CRC_CONNECTED -> CRC_WRITE_TX\n");
-				//	UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+				osThreadFlagsSet(CRC_ServiceThreadId, SERVICE_REQUEST);
 			}
 			break;
 
@@ -211,8 +223,7 @@ static void CRCAPP_Write_Char(uint8_t index) {
 			if(CRC_Context[con_index].RXCharHdle > 0) {
 				CRC_Context[con_index].state = CRC_ENABLE_RX_NOTIFICATION;
 				APP_DBG_MSG("CRC_CONNECTED -> CRC_ENABLE_RX_NOTIFICATION\n");
-//				UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
-				// ??
+				osThreadFlagsSet(CRC_ServiceThreadId, SERVICE_REQUEST);
 			}
 			break;
 
@@ -221,8 +232,7 @@ static void CRCAPP_Write_Char(uint8_t index) {
 			if(CRC_Context[con_index].RXCharHdle > 0) {
 				CRC_Context[con_index].state = CRC_DISABLE_RX_NOTIFICATION;
 				APP_DBG_MSG("CRC_CONNECTED -> CRC_DISABLE_RX_NOTIFICATION\n");
-//				UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
-				// ??
+				osThreadFlagsSet(CRC_ServiceThreadId, SERVICE_REQUEST);
 			}
 			break;
 
@@ -594,40 +604,35 @@ static SVCCTL_EvtAckStatus_t CRCAPP_Event_Handler(void *Event) {
 					case CRC_IDLE: {
 						CRC_Context[index].state = CRC_DISCOVER_CHARACS;
 						APP_DBG_MSG("CRC_IDLE -> CRC_DISCOVER_CHARACS\n");
-//						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
-						// ??
+						osThreadFlagsSet(CRC_ServiceThreadId, SERVICE_REQUEST);
 					}
 					break;
 
 					case CRC_DISCOVER_CHARACS: {
 						CRC_Context[index].state = CRC_DISCOVER_DESC;
 						APP_DBG_MSG("CRC_DISCOVER_CHARACS -> CRC_DISCOVER_DESC\n");
-//						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
-						// ??
+						osThreadFlagsSet(CRC_ServiceThreadId, SERVICE_REQUEST);
 					}
 					break;
 
 					case CRC_DISCOVER_DESC: {
 						CRC_Context[index].state = CRC_ENABLE_RX_NOTIFICATION;
 						APP_DBG_MSG("CRC_DISCOVER_DESC -> CRC_ENABLE_RX_NOTIFICATION\n");
-//						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
-						// ??
+						osThreadFlagsSet(CRC_ServiceThreadId, SERVICE_REQUEST);
 					}
 					break;
 
 					case CRC_READ_TX: {
 						CRC_Context[index].state = CRC_CONNECTED;
 						APP_DBG_MSG("CRC_READ_TX -> CRC_CONNECTED\n");
-//						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
-						// ??
+						osThreadFlagsSet(CRC_ServiceThreadId, SERVICE_REQUEST);
 					}
 					break;
 
 					case CRC_READ_RX: {
 						CRC_Context[index].state = CRC_CONNECTED;
 						APP_DBG_MSG("CRC_READ_RX -> CRC_CONNECTED\n");
-//						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
-						// ??
+						osThreadFlagsSet(CRC_ServiceThreadId, SERVICE_REQUEST);
 					}
 					break;
 
@@ -635,32 +640,28 @@ static SVCCTL_EvtAckStatus_t CRCAPP_Event_Handler(void *Event) {
 					case CRC_READ_RX_CCC: {
 						CRC_Context[index].state = CRC_CONNECTED;
 						APP_DBG_MSG("CRC_READ_RX_CCC -> CRC_CONNECTED\n");
-//						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
-						// ??
+						osThreadFlagsSet(CRC_ServiceThreadId, SERVICE_REQUEST);
 					}
 					break;
 
 					case CRC_WRITE_TX: {
 						CRC_Context[index].state = CRC_CONNECTED;
 						APP_DBG_MSG("CRC_WRITE_TX -> CRC_CONNECTED\n");
-//						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
-						// ??
+						osThreadFlagsSet(CRC_ServiceThreadId, SERVICE_REQUEST);
 					}
 					break;
 
 					case CRC_ENABLE_RX_NOTIFICATION: {
 						CRC_Context[index].state = CRC_CONNECTED;
 						APP_DBG_MSG("CRC_ENABLE_RX_NOTIFICATION -> CRC_CONNECTED\n");
-//						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
-						// ??
+						osThreadFlagsSet(CRC_ServiceThreadId, SERVICE_REQUEST);
 					}
 					break;
 
 					case CRC_DISABLE_RX_NOTIFICATION: {
 						CRC_Context[index].state = CRC_CONNECTED;
 						APP_DBG_MSG("CRC_DISABLE_RX_NOTIFICATION -> CRC_CONNECTED\n");
-//						UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
-						// ??
+						osThreadFlagsSet(CRC_ServiceThreadId, SERVICE_REQUEST);
 					}
 					break;
 
@@ -754,6 +755,12 @@ void CRCAPP_Init(void) {
 		Error_Handler();
 	}
 
+	// creation of CRC_ServiceThread
+	CRC_ServiceThreadId = osThreadNew(CRC_ServiceThread, NULL, &service_ThreadAttr);
+	if (CRC_ServiceThreadId == NULL) {
+		Error_Handler();
+	}
+
 	waitForComplete = 1;
 
 	for(index = 0; index < CFG_MAX_CONNECTION; index++) {
@@ -773,194 +780,201 @@ void CRCAPP_Init(void) {
  * @param  None
  * @retval None
  */
-void CRCAPP_Update_Service() {
+static void CRC_ServiceThread(void *argument) {
 	tBleStatus result;
 	uint8_t index;
+	osStatus_t status;
 
-	index = 0;
-	while ((index < CFG_MAX_CONNECTION) &&
-			(CRC_Context[index].state != CRC_IDLE)) {
-		switch (CRC_Context[index].state) {
-		case CRC_CONNECTED: {
-			APP_DBG_MSG("CRC_CONNECTED\n");
-			if (APP_BLE_Get_Client_Connection_Status(CRC_Context[index].connHandle) == APP_BLE_IDLE) {
-				APP_DBG_MSG("Handle deconnected !\n");
-				CRC_Context[index].state = CRC_IDLE;
-				CRC_Context[index].connHandle = 0xFFFF;
-			}
-		}
-		break;
-
-		case CRC_DISCOVER_CHARACS:{
-			APP_DBG_MSG("CRC_DISCOVER_CHARACS\n");
-
-			result = aci_gatt_disc_all_char_of_service(CRC_Context[index].connHandle,
-					CRC_Context[index].ServiceHandle,
-					CRC_Context[index].ServiceEndHandle);
-
-			if ( result == BLE_STATUS_SUCCESS ) {
-				APP_DBG_MSG("All characteristics discovery sent successfully \n");
-			} else {
-				APP_DBG_MSG("All characteristics discovery sending failed with result: 0x%x\n", result);
-				if (result == BLE_STATUS_NOT_ALLOWED) {
-					CRC_Context[index].state = CRC_IDLE; /* redo a CRC_DISCOVER_CHARACS */
-					waitForComplete = 1;
-					APP_DBG_MSG("BLE_STATUS_NOT_ALLOWED do another CRC_DISCOVER_CHARACS\n");
+	// Infinite loop
+	for(;;) {
+		// blocked till a service request is received
+		status = osThreadFlagsWait(SERVICE_REQUEST, osFlagsWaitAny, osWaitForever);
+		index = 0;
+		while ((index < CFG_MAX_CONNECTION) &&
+				(CRC_Context[index].state != CRC_IDLE)) {
+			switch (CRC_Context[index].state) {
+			case CRC_CONNECTED: {
+				APP_DBG_MSG("CRC_CONNECTED\n");
+//				if (APP_BLE_Get_Client_Connection_Status(CRC_Context[index].connHandle) == APP_BLE_IDLE) {
+				if (APP_BLE_Get_Server_Connection_Status() == APP_BLE_IDLE) {
+					APP_DBG_MSG("Handle deconnected !\n");
+					CRC_Context[index].state = CRC_IDLE;
+					CRC_Context[index].connHandle = 0xFFFF;
 				}
 			}
-		}
-		break;
-
-		case CRC_DISCOVER_DESC: {
-			APP_DBG_MSG("CRC_DISCOVER_DESC\n");
-
-			result = aci_gatt_disc_all_char_desc(CRC_Context[index].connHandle,
-					CRC_Context[index].ServiceHandle,
-					CRC_Context[index].ServiceEndHandle);
-
-			if ( result == BLE_STATUS_SUCCESS ) {
-				APP_DBG_MSG("Descriptors discovery sent successfully \n");
-			} else {
-				APP_DBG_MSG("Descriptors discovery sending failed \n");
-				if (result == BLE_STATUS_NOT_ALLOWED) {
-					CRC_Context[index].state = CRC_DISCOVER_CHARACS; /* redo a CRC_DISCOVER_DESC */
-					waitForComplete = 1;
-					APP_DBG_MSG("BLE_STATUS_NOT_ALLOWED do another CRC_DISCOVER_DESC\n");
-				}
-			}
-		}
-		break;
-
-		case CRC_READ_RX: {
-			APP_DBG_MSG("CRC_READ_TEMPERATURE_TYPE\n");
-
-			result = aci_gatt_read_char_value(CRC_Context[index].connHandle,
-					CRC_Context[index].RXCharHdle);
-			if ( result == BLE_STATUS_SUCCESS ) {
-				APP_DBG_MSG("Read CRC Temperature Type sent successfully \n");
-			} else {
-				APP_DBG_MSG("Read CRC RX sending failed \n");
-				if (result == BLE_STATUS_NOT_ALLOWED) {
-					CRC_Context[index].state = CRC_READ_RX; /* redo a CRC_READ_RX */
-					waitForComplete = 1;
-					APP_DBG_MSG("BLE_STATUS_NOT_ALLOWED do another CRC_READ_RX\n");
-				}
-			}
-		}
-		break;
-
-		case CRC_READ_TX: {
-			APP_DBG_MSG("CRC_READ_TX\n");
-
-			result = aci_gatt_read_char_value(CRC_Context[index].connHandle,
-					CRC_Context[index].TXCharHdle);
-			if ( result == BLE_STATUS_SUCCESS ) {
-				APP_DBG_MSG("Read CRC TX sent Successfully \n");
-			} else {
-				APP_DBG_MSG("Read TX sent Failed \n");
-				if (result == BLE_STATUS_NOT_ALLOWED) {
-					CRC_Context[index].state = CRC_READ_TX; /* redo a CRC_READ_TX */
-					waitForComplete = 1;
-					APP_DBG_MSG("BLE_STATUS_NOT_ALLOWED do another CRC_READ_TX\n");
-				}
-			}
-		}
-		break;
-
-		case CRC_READ_RX_CCC: {
-			APP_DBG_MSG("CRC_READ_TEMPERATURE_MEASUREMENT_CCC\n");
-
-			result = aci_gatt_read_char_desc(CRC_Context[index].connHandle,
-					CRC_Context[index].RXCCCDescHdle);
-			if ( result == BLE_STATUS_SUCCESS ) {
-				APP_DBG_MSG("Read CRC RX CCCC sent successfully \n");
-			} else  {
-				APP_DBG_MSG("Read RX sending failed \n");
-				if(result == BLE_STATUS_NOT_ALLOWED) {
-					CRC_Context[index].state = CRC_READ_RX_CCC; /* redo a CRC_READ_RX_CCC */
-					waitForComplete = 1;
-					APP_DBG_MSG("BLE_STATUS_NOT_ALLOWED do another CRC_READ_RX_CCC\n");
-				}
-			}
-		}
-		break;
-
-		case CRC_WRITE_TX: {
-			APP_DBG_MSG("CRC_WRITE_TX\n");
-
-			result = aci_gatt_write_without_resp(CRC_Context[index].connHandle,
-					CRC_Context[index].TXCharHdle,
-					strlen(szString),
-					(uint8_t *) &szString[0]);
-
-			if ( result == BLE_STATUS_SUCCESS ) {
-				APP_DBG_MSG("Write CRC TX sent Successfully \n");
-				CRC_Context[index].state = CRC_CONNECTED;
-				APP_DBG_MSG("CRC_WRITE_TX -> CRC_CONNECTED\n");
-//				UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
-				// ??
-			} else {
-				APP_DBG_MSG("Write TX sent Failed \n");
-				if (result == BLE_STATUS_NOT_ALLOWED) {
-					CRC_Context[index].state = CRC_WRITE_TX; /* redo a CRC_WRITE_TX */
-					waitForComplete = 1;
-					APP_DBG_MSG("BLE_STATUS_NOT_ALLOWED do another CRC_WRITE_TX\n");
-				}
-			}
-		}
-		break;
-
-		case CRC_ENABLE_RX_NOTIFICATION: {
-			uint8_t notification[2] = {0x01, 0x00};
-
-			APP_DBG_MSG("CRC_ENABLE_RX_NOTIFICATION\n");
-
-			result = aci_gatt_write_char_desc(CRC_Context[index].connHandle,
-					CRC_Context[index].RXCCCDescHdle,
-					2,
-					(uint8_t *) &notification[0]);
-
-			if( result == BLE_STATUS_SUCCESS ) {
-				waitForComplete = 1;
-				APP_DBG_MSG("Enable CRC RX Notification Sent Successfully \n");
-			} else {
-				APP_DBG_MSG("Enable CRC RX Notification Sent Failed \n");
-				if (result == BLE_STATUS_NOT_ALLOWED) {
-					CRC_Context[index].state = CRC_ENABLE_RX_NOTIFICATION; /* redo a CRC_ENABLE_RX_NOTIFICATION */
-					waitForComplete = 1;
-					APP_DBG_MSG("BLE_STATUS_NOT_ALLOWED do another CRC_ENABLE_RX_NOTIFICATION\n");
-				}
-			}
-		}
-		break;
-
-		case CRC_DISABLE_RX_NOTIFICATION: {
-			uint8_t notification[2] = {0x00, 0x00};
-
-			APP_DBG_MSG("CRC_DISABLE_RX_NOTIFICATION\n");
-
-			result = aci_gatt_write_char_desc(CRC_Context[index].connHandle,
-					CRC_Context[index].RXCCCDescHdle,
-					2,
-					(uint8_t *) &notification[0]);
-			if ( result == BLE_STATUS_SUCCESS ) {
-				waitForComplete = 1;
-				APP_DBG_MSG("Disable CRC RX Notification Sent Successfully \n");
-			} else {
-				APP_DBG_MSG("Disable CRC RX Notification Sent Failed \n");
-				if (result == BLE_STATUS_NOT_ALLOWED) {
-					CRC_Context[index].state = CRC_DISABLE_RX_NOTIFICATION; /* redo a CRC_DISABLE_RX_NOTIFICATION */
-					waitForComplete = 1;
-					APP_DBG_MSG("BLE_STATUS_NOT_ALLOWED do another CRC_DISABLE_RX_NOTIFICATION\n");
-				}
-			}
-		}
-		break;
-
-		default:
 			break;
+
+			case CRC_DISCOVER_CHARACS:{
+				APP_DBG_MSG("CRC_DISCOVER_CHARACS\n");
+
+				result = aci_gatt_disc_all_char_of_service(CRC_Context[index].connHandle,
+						CRC_Context[index].ServiceHandle,
+						CRC_Context[index].ServiceEndHandle);
+
+				if ( result == BLE_STATUS_SUCCESS ) {
+					APP_DBG_MSG("All characteristics discovery sent successfully \n");
+				} else {
+					APP_DBG_MSG("All characteristics discovery sending failed with result: 0x%x\n", result);
+					if (result == BLE_STATUS_NOT_ALLOWED) {
+						CRC_Context[index].state = CRC_IDLE; /* redo a CRC_DISCOVER_CHARACS */
+						waitForComplete = 1;
+						APP_DBG_MSG("BLE_STATUS_NOT_ALLOWED do another CRC_DISCOVER_CHARACS\n");
+					}
+				}
+			}
+			break;
+
+			case CRC_DISCOVER_DESC: {
+				APP_DBG_MSG("CRC_DISCOVER_DESC\n");
+
+				result = aci_gatt_disc_all_char_desc(CRC_Context[index].connHandle,
+						CRC_Context[index].ServiceHandle,
+						CRC_Context[index].ServiceEndHandle);
+
+				if ( result == BLE_STATUS_SUCCESS ) {
+					APP_DBG_MSG("Descriptors discovery sent successfully \n");
+				} else {
+					APP_DBG_MSG("Descriptors discovery sending failed \n");
+					if (result == BLE_STATUS_NOT_ALLOWED) {
+						CRC_Context[index].state = CRC_DISCOVER_CHARACS; /* redo a CRC_DISCOVER_DESC */
+						waitForComplete = 1;
+						APP_DBG_MSG("BLE_STATUS_NOT_ALLOWED do another CRC_DISCOVER_DESC\n");
+					}
+				}
+			}
+			break;
+
+			case CRC_READ_RX: {
+				APP_DBG_MSG("CRC_READ_TEMPERATURE_TYPE\n");
+
+				result = aci_gatt_read_char_value(CRC_Context[index].connHandle,
+						CRC_Context[index].RXCharHdle);
+				if ( result == BLE_STATUS_SUCCESS ) {
+					APP_DBG_MSG("Read CRC Temperature Type sent successfully \n");
+				} else {
+					APP_DBG_MSG("Read CRC RX sending failed \n");
+					if (result == BLE_STATUS_NOT_ALLOWED) {
+						CRC_Context[index].state = CRC_READ_RX; /* redo a CRC_READ_RX */
+						waitForComplete = 1;
+						APP_DBG_MSG("BLE_STATUS_NOT_ALLOWED do another CRC_READ_RX\n");
+					}
+				}
+			}
+			break;
+
+			case CRC_READ_TX: {
+				APP_DBG_MSG("CRC_READ_TX\n");
+
+				result = aci_gatt_read_char_value(CRC_Context[index].connHandle,
+						CRC_Context[index].TXCharHdle);
+				if ( result == BLE_STATUS_SUCCESS ) {
+					APP_DBG_MSG("Read CRC TX sent Successfully \n");
+				} else {
+					APP_DBG_MSG("Read TX sent Failed \n");
+					if (result == BLE_STATUS_NOT_ALLOWED) {
+						CRC_Context[index].state = CRC_READ_TX; /* redo a CRC_READ_TX */
+						waitForComplete = 1;
+						APP_DBG_MSG("BLE_STATUS_NOT_ALLOWED do another CRC_READ_TX\n");
+					}
+				}
+			}
+			break;
+
+			case CRC_READ_RX_CCC: {
+				APP_DBG_MSG("CRC_READ_TEMPERATURE_MEASUREMENT_CCC\n");
+
+				result = aci_gatt_read_char_desc(CRC_Context[index].connHandle,
+						CRC_Context[index].RXCCCDescHdle);
+				if ( result == BLE_STATUS_SUCCESS ) {
+					APP_DBG_MSG("Read CRC RX CCCC sent successfully \n");
+				} else  {
+					APP_DBG_MSG("Read RX sending failed \n");
+					if(result == BLE_STATUS_NOT_ALLOWED) {
+						CRC_Context[index].state = CRC_READ_RX_CCC; /* redo a CRC_READ_RX_CCC */
+						waitForComplete = 1;
+						APP_DBG_MSG("BLE_STATUS_NOT_ALLOWED do another CRC_READ_RX_CCC\n");
+					}
+				}
+			}
+			break;
+
+			case CRC_WRITE_TX: {
+				APP_DBG_MSG("CRC_WRITE_TX\n");
+
+				result = aci_gatt_write_without_resp(CRC_Context[index].connHandle,
+						CRC_Context[index].TXCharHdle,
+						strlen(szString),
+						(uint8_t *) &szString[0]);
+
+				if ( result == BLE_STATUS_SUCCESS ) {
+					APP_DBG_MSG("Write CRC TX sent Successfully \n");
+					CRC_Context[index].state = CRC_CONNECTED;
+					APP_DBG_MSG("CRC_WRITE_TX -> CRC_CONNECTED\n");
+					//				UTIL_SEQ_SetTask( 1<<CFG_TASK_CRC_DISCOVERY_REQ_ID, CFG_SCH_PRIO_0);
+					// ??
+				} else {
+					APP_DBG_MSG("Write TX sent Failed \n");
+					if (result == BLE_STATUS_NOT_ALLOWED) {
+						CRC_Context[index].state = CRC_WRITE_TX; /* redo a CRC_WRITE_TX */
+						waitForComplete = 1;
+						APP_DBG_MSG("BLE_STATUS_NOT_ALLOWED do another CRC_WRITE_TX\n");
+					}
+				}
+			}
+			break;
+
+			case CRC_ENABLE_RX_NOTIFICATION: {
+				uint8_t notification[2] = {0x01, 0x00};
+
+				APP_DBG_MSG("CRC_ENABLE_RX_NOTIFICATION\n");
+
+				result = aci_gatt_write_char_desc(CRC_Context[index].connHandle,
+						CRC_Context[index].RXCCCDescHdle,
+						2,
+						(uint8_t *) &notification[0]);
+
+				if( result == BLE_STATUS_SUCCESS ) {
+					waitForComplete = 1;
+					APP_DBG_MSG("Enable CRC RX Notification Sent Successfully \n");
+				} else {
+					APP_DBG_MSG("Enable CRC RX Notification Sent Failed \n");
+					if (result == BLE_STATUS_NOT_ALLOWED) {
+						CRC_Context[index].state = CRC_ENABLE_RX_NOTIFICATION; /* redo a CRC_ENABLE_RX_NOTIFICATION */
+						waitForComplete = 1;
+						APP_DBG_MSG("BLE_STATUS_NOT_ALLOWED do another CRC_ENABLE_RX_NOTIFICATION\n");
+					}
+				}
+			}
+			break;
+
+			case CRC_DISABLE_RX_NOTIFICATION: {
+				uint8_t notification[2] = {0x00, 0x00};
+
+				APP_DBG_MSG("CRC_DISABLE_RX_NOTIFICATION\n");
+
+				result = aci_gatt_write_char_desc(CRC_Context[index].connHandle,
+						CRC_Context[index].RXCCCDescHdle,
+						2,
+						(uint8_t *) &notification[0]);
+				if ( result == BLE_STATUS_SUCCESS ) {
+					waitForComplete = 1;
+					APP_DBG_MSG("Disable CRC RX Notification Sent Successfully \n");
+				} else {
+					APP_DBG_MSG("Disable CRC RX Notification Sent Failed \n");
+					if (result == BLE_STATUS_NOT_ALLOWED) {
+						CRC_Context[index].state = CRC_DISABLE_RX_NOTIFICATION; /* redo a CRC_DISABLE_RX_NOTIFICATION */
+						waitForComplete = 1;
+						APP_DBG_MSG("BLE_STATUS_NOT_ALLOWED do another CRC_DISABLE_RX_NOTIFICATION\n");
+					}
+				}
+			}
+			break;
+
+			default:
+				break;
+			}
+			index++;
 		}
-		index++;
 	}
 }
 

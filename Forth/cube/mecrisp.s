@@ -60,10 +60,17 @@
 .equ	flash8bytesblockwrite, 1
 @.equ	charkommaavailable, 1  Not available.
 
-// set the default terminal
-.equ	CDC_TERMINAL,	1
-//.equ	UART_TERMINAL,	1
-//.equ	BLE_TERMINAL,	1
+// console redirection
+.equ	UART_TERMINAL, 		1
+.equ	CDC_TERMINAL, 		2
+.equ	CRS_TERMINAL,		3
+
+.equ	DEFAULT_TERMINAL, CDC_TERMINAL
+
+.equ	TERMINAL_AUTO,		1
+
+// Dongle has not all IOs
+.equ	DONGLE, 			1
 
 @ -----------------------------------------------------------------------------
 @ Start with some essential macro definitions
@@ -254,6 +261,25 @@ Forth:
 
 	@ Catch the pointers for Flash dictionary
 .include "catchflashpointers.s"
+
+	// console redirection on reset
+	bl		BSP_getSwitch1
+	cmp		r0, #0
+	beq		1f
+	bl		uart_terminal		// button1 pressed on reset -> uart terminal
+1:
+.ifndef DONGLE
+	bl		BSP_getSwitch2
+	cmp		r0, #0
+	beq		2f
+	bl		cdc_terminal		// button2 pressed on reset -> usb cdc terminal
+2:
+	bl		BSP_getSwitch3
+	cmp		r0, #0
+	beq		3f
+	bl		crs_terminal		// button3 pressed on reset -> BLE crs terminal
+3:
+.endif
 
 	welcome " by Matthias Koch. "
 

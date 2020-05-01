@@ -569,6 +569,24 @@ typedef enum
 
 #define CFG_OTP_END_ADRESS      OTP_AREA_END_ADDR
 
+
+/**< Add in that list all tasks that may send a ACI/HCI command */
+typedef enum
+{
+  CFG_TASK_CONN_MGR_ID,
+  CFG_TASK_CRC_DISCOVERY_REQ_ID,
+  CFG_TASK_SCAN_REQ_ID,
+  CFG_TASK_CONN_REQ_ID,
+  CFG_TASK_CRS_UPDATE_REQ_ID,
+  CFG_TASK_HCI_ASYNCH_EVT_ID,
+
+  CFG_LAST_TASK_ID_WITH_HCICMD,                                               /**< Shall be LAST in the list */
+} CFG_Task_Id_With_HCI_Cmd_t;
+
+
+
 #endif /*APP_CONF_H */
+
+
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -257,25 +257,25 @@ static void ShciUserEvtThread(void *argument)
  *
  *************************************************************/
 
-void shci_notify_asynch_evt(void* pdata)
-{
-  UNUSED(pdata);
-  osThreadFlagsSet( ShciUserEvtThreadId, 1 );
-  return;
+void shci_notify_asynch_evt(void* pdata) {
+	UNUSED(pdata);
+	osThreadFlagsSet(ShciUserEvtThreadId, 1);
+	return;
 }
 
-void shci_cmd_resp_release(uint32_t flag)
-{
-  UNUSED(flag);
-  osSemaphoreRelease( SemShciId );
-  return;
+void shci_cmd_resp_release(uint32_t flag) {
+	UNUSED(flag);
+	osSemaphoreRelease(SemShciId);
+	return;
 }
 
-void shci_cmd_resp_wait(uint32_t timeout)
-{
-  UNUSED(timeout);
-  osSemaphoreAcquire( SemShciId, osWaitForever );
-  return;
+void shci_cmd_resp_wait(uint32_t timeout) {
+	UNUSED(timeout);
+	osStatus_t status = osSemaphoreAcquire(SemShciId, timeout);
+	if (status != osOK) {
+		Error_Handler();
+	}
+	return;
 }
 
 /* USER CODE BEGIN FD_WRAP_FUNCTIONS */

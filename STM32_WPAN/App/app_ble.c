@@ -264,13 +264,16 @@ tBDAddr SERVER_REMOTE_BDADDR;
 /* Global variables ----------------------------------------------------------*/
 osMutexId_t MtxHciId;
 osSemaphoreId_t SemHciId;
+#if (BLE_CFG_PERIPHERAL == 1)
 osThreadId_t AdvUpdateThreadId;
+#endif
 osThreadId_t HciUserEvtThreadId;
 #if (BLE_CFG_CENTRAL == 1)
-osThreadId_t ScanRequestId;
-osThreadId_t ConnectRequestId;
+osThreadId_t ScanRequestThreadId;
+osThreadId_t ConnectRequestThreadId;
 #endif
 
+#if (BLE_CFG_PERIPHERAL == 1)
 const osThreadAttr_t AdvUpdateThread_attr = {
     .name = CFG_ADV_UPDATE_THREAD_NAME,
     .attr_bits = CFG_ADV_UPDATE_THREAD_ATTR_BITS,
@@ -280,6 +283,7 @@ const osThreadAttr_t AdvUpdateThread_attr = {
     .priority = CFG_ADV_UPDATE_THREAD_PRIORITY,
     .stack_size = CFG_ADV_UPDATE_THREAD_STACK_SIZE
 };
+#endif
 
 const osThreadAttr_t HciUserEvtThread_attr = {
     .name = CFG_HCI_USER_EVT_THREAD_NAME,
@@ -338,149 +342,151 @@ static void ConnectRequestThread( void *argument );
 /* USER CODE END PFP */
 
 /* Functions Definition ------------------------------------------------------*/
-void APP_BLE_Init( void )
-{
+void APP_BLE_Init( void ) {
 /* USER CODE BEGIN APP_BLE_Init_1 */
 
 /* USER CODE END APP_BLE_Init_1 */
-  uint8_t index;
-  SHCI_C2_Ble_Init_Cmd_Packet_t ble_init_cmd_packet =
-  {
-    {{0,0,0}},                          /**< Header unused */
-    {0,                                 /** pBleBufferAddress not used */
-    0,                                  /** BleBufferSize not used */
-    CFG_BLE_NUM_GATT_ATTRIBUTES,
-    CFG_BLE_NUM_GATT_SERVICES,
-    CFG_BLE_ATT_VALUE_ARRAY_SIZE,
-    CFG_BLE_NUM_LINK,
-    CFG_BLE_DATA_LENGTH_EXTENSION,
-    CFG_BLE_PREPARE_WRITE_LIST_SIZE,
-    CFG_BLE_MBLOCK_COUNT,
-    CFG_BLE_MAX_ATT_MTU,
-    CFG_BLE_SLAVE_SCA,
-    CFG_BLE_MASTER_SCA,
-    CFG_BLE_LSE_SOURCE,
-    CFG_BLE_MAX_CONN_EVENT_LENGTH,
-    CFG_BLE_HSE_STARTUP_TIME,
-    CFG_BLE_VITERBI_MODE,
-    CFG_BLE_LL_ONLY,
-    0}
-  };
+	uint8_t index;
+	SHCI_C2_Ble_Init_Cmd_Packet_t ble_init_cmd_packet = {
+			{{0,0,0}},                          /**< Header unused */
+			{0,                                 /** pBleBufferAddress not used */
+					0,                                  /** BleBufferSize not used */
+					CFG_BLE_NUM_GATT_ATTRIBUTES,
+					CFG_BLE_NUM_GATT_SERVICES,
+					CFG_BLE_ATT_VALUE_ARRAY_SIZE,
+					CFG_BLE_NUM_LINK,
+					CFG_BLE_DATA_LENGTH_EXTENSION,
+					CFG_BLE_PREPARE_WRITE_LIST_SIZE,
+					CFG_BLE_MBLOCK_COUNT,
+					CFG_BLE_MAX_ATT_MTU,
+					CFG_BLE_SLAVE_SCA,
+					CFG_BLE_MASTER_SCA,
+					CFG_BLE_LSE_SOURCE,
+					CFG_BLE_MAX_CONN_EVENT_LENGTH,
+					CFG_BLE_HSE_STARTUP_TIME,
+					CFG_BLE_VITERBI_MODE,
+					CFG_BLE_LL_ONLY,
+					0}
+	};
 
-  /**
-   * Initialize Ble Transport Layer
-   */
-  Ble_Tl_Init( );
+	/**
+	 * Initialize Ble Transport Layer
+	 */
+	Ble_Tl_Init( );
 
-  /**
-   * Do not allow standby in the application
-   */
-  UTIL_LPM_SetOffMode(1 << CFG_LPM_APP_BLE, UTIL_LPM_DISABLE);
+	/**
+	 * Do not allow standby in the application
+	 */
+	UTIL_LPM_SetOffMode(1 << CFG_LPM_APP_BLE, UTIL_LPM_DISABLE);
 
-  /**
-   * Register the hci transport layer to handle BLE User Asynchronous Events
-   */
-  HciUserEvtThreadId = osThreadNew(HciUserEvtThread, NULL, &HciUserEvtThread_attr);
+	/**
+	 * Register the hci transport layer to handle BLE User Asynchronous Events
+	 */
+	HciUserEvtThreadId = osThreadNew(HciUserEvtThread, NULL, &HciUserEvtThread_attr);
 
-  /**
-   * Starts the BLE Stack on CPU2
-   */
-  SHCI_C2_BLE_Init( &ble_init_cmd_packet );
+	/**
+	 * Starts the BLE Stack on CPU2
+	 */
+	SHCI_C2_BLE_Init(&ble_init_cmd_packet);
 
-  /**
-   * Initialization of HCI & GATT & GAP layer
-   */
-  Ble_Hci_Gap_Gatt_Init();
+	/**
+	 * Initialization of HCI & GATT & GAP layer
+	 */
+	Ble_Hci_Gap_Gatt_Init();
 
-  /**
-   * Initialization of the BLE Services
-   */
-  SVCCTL_Init();
+	/**
+	 * Initialization of the BLE Services
+	 */
+	SVCCTL_Init();
 
-  /**
-   * From here, all initialization are BLE application specific
-   */
+	/**
+	 * From here, all initialization are BLE application specific
+	 */
 #if (BLE_CFG_CENTRAL == 1)
-  ScanRequestId = osThreadNew(ScanRequestThread, NULL, &ScanRequestThread_attr);
-  ConnectRequestId = osThreadNew(ConnectRequestThread, NULL, &ConnectRequestThread_attr);
+	ScanRequestThreadId = osThreadNew(ScanRequestThread, NULL, &ScanRequestThread_attr);
+	ConnectRequestThreadId = osThreadNew(ConnectRequestThread, NULL, &ConnectRequestThread_attr);
 #endif
 
 #if (BLE_CFG_PERIPHERAL == 1)
-  AdvUpdateThreadId = osThreadNew(AdvUpdateThread, NULL, &AdvUpdateThread_attr);
+	AdvUpdateThreadId = osThreadNew(AdvUpdateThread, NULL, &AdvUpdateThread_attr);
 #endif
 
-  /**
-   * Initialization of the BLE App Context
-   */
-  for (index = 0; index < CFG_MAX_CONNECTION; index++)
-  {
-    BleApplicationContext.Device_Connection_Status[index] = APP_BLE_IDLE;
-    BleApplicationContext.BleApplicationContext_legacy.connectionHandle[index] = 0xFFFF;
-  }
-  /**
-   * Initialization of ADV - Ad Manufacturer Element - Support OTA Bit Mask
-   */
+	/**
+	 * Initialization of the BLE App Context
+	 */
+	for (index = 0; index < CFG_MAX_CONNECTION; index++) {
+		BleApplicationContext.Device_Connection_Status[index] = APP_BLE_IDLE;
+		BleApplicationContext.BleApplicationContext_legacy.connectionHandle[index] = 0xFFFF;
+	}
+	/**
+	 * Initialization of ADV - Ad Manufacturer Element - Support OTA Bit Mask
+	 */
 #if(BLE_CFG_OTA_REBOOT_CHAR != 0)
-  manuf_data[sizeof(manuf_data)-8] = CFG_FEATURE_OTA_REBOOT;
+	manuf_data[sizeof(manuf_data)-8] = CFG_FEATURE_OTA_REBOOT;
 #endif
 
 #if (BLE_CFG_CENTRAL == 1)
-  /**
-   * Initialize CRC (Cable Replacement Client) Application
-   */
-  CRCAPP_Init();
+	/**
+	 * Initialize CRC (Cable Replacement Client) Application
+	 */
+	CRCAPP_Init();
 #endif
 
 #if (BLE_CFG_PERIPHERAL == 1)
-  /**
-   * Initialize DIS Application
-   */
-  DISAPP_Init();
+	/**
+	 * Initialize DIS Application
+	 */
+	DISAPP_Init();
 
-  /**
-   * Initialize HRS Application
-   */
-  HRSAPP_Init();
+	/**
+	 * Initialize HRS Application
+	 */
+	HRSAPP_Init();
 #endif
 
 #if (BLE_CFG_CENTRAL == 1)
-  /**
-   * Create timer to handle the connection state machine
-   */
-  HW_TS_Create(CFG_TIM_PROC_ID_ISR, &(BleApplicationContext.Connection_mgr_timer_Id), hw_ts_SingleShot, ConnMgr);
+	/**
+	 * Create timer to handle the connection state machine
+	 */
+	HW_TS_Create(CFG_TIM_PROC_ID_ISR, &(BleApplicationContext.Connection_mgr_timer_Id), hw_ts_SingleShot, ConnMgr);
 #endif
 
 #if (BLE_CFG_PERIPHERAL == 1)
-  /**
-   * Create timer to handle the connection state machine
-   */
-  HW_TS_Create(CFG_TIM_PROC_ID_ISR, &(BleApplicationContext.Connection_mgr_timer_Id), hw_ts_SingleShot, Adv_Mgr);
+	/**
+	 * Create timer to handle the connection state machine
+	 */
+	HW_TS_Create(CFG_TIM_PROC_ID_ISR, &(BleApplicationContext.Connection_mgr_timer_Id), hw_ts_SingleShot, Adv_Mgr);
 #endif
 
 
 #if (BLE_CFG_PERIPHERAL == 1)
-  /**
-   * Make device discoverable
-   */
-  BleApplicationContext.BleApplicationContext_legacy.advtServUUID[0] = AD_TYPE_16_BIT_SERV_UUID;
-  BleApplicationContext.BleApplicationContext_legacy.advtServUUIDlen = 1;
-  Add_Advertisment_Service_UUID(HEART_RATE_SERVICE_UUID);
+	/**
+	 * Make device discoverable
+	 */
+	BleApplicationContext.BleApplicationContext_legacy.advtServUUID[0] = AD_TYPE_16_BIT_SERV_UUID;
+	BleApplicationContext.BleApplicationContext_legacy.advtServUUIDlen = 1;
+	Add_Advertisment_Service_UUID(HEART_RATE_SERVICE_UUID);
 //  Add_Advertisment_Service_UUID(&CRS_STM_UUID[0], sizeof(CRS_STM_UUID));
 
-  /* Initialize intervals for reconnexion without intervals update */
-  AdvIntervalMin = CFG_FAST_CONN_ADV_INTERVAL_MIN;
-  AdvIntervalMax = CFG_FAST_CONN_ADV_INTERVAL_MAX;
+	/* Initialize intervals for reconnexion without intervals update */
+	AdvIntervalMin = CFG_FAST_CONN_ADV_INTERVAL_MIN;
+	AdvIntervalMax = CFG_FAST_CONN_ADV_INTERVAL_MAX;
 
-  /**
-  * Start to Advertise to be connected by Collector
-   */
-   Adv_Request(APP_BLE_FAST_ADV);
+	/**
+	 * Start to Advertise to be connected by Collector
+	 */
+	Adv_Request(APP_BLE_FAST_ADV);
 #endif
 
 /* USER CODE BEGIN APP_BLE_Init_2 */
+#if (BLE_CFG_CENTRAL == 1)
+	// Start scanning
+	// UTIL_SEQ_SetTask(1 << CFG_TASK_SCAN_REQ_ID, CFG_SCH_PRIO_0);
+	osThreadFlagsSet(ScanRequestThreadId, 1);
+#endif
 
 /* USER CODE END APP_BLE_Init_2 */
-  return;
+	return;
 }
 
 
@@ -517,7 +523,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 				APP_DBG_MSG("-- GAP GENERAL DISCOVERY PROCEDURE_COMPLETED\n");
 				if(BleApplicationContext.DeviceServerFound == 0x01) {
 					// UTIL_SEQ_SetTask(1 << CFG_TASK_CONN_REQ_ID, CFG_SCH_PRIO_0); ??
-					osThreadFlagsSet( ConnectRequestId, 1 );
+					osThreadFlagsSet(ConnectRequestThreadId, 1);
 				}
 			}
 			break; /* EVT_BLUE_GAP_PAIRING_CMPLT */
@@ -682,12 +688,13 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 						break;
 
 					case AD_TYPE_128_BIT_SERV_UUID:
+						result = TRUE;
 						APP_DBG_MSG("AD_TYPE_128_BIT_SERV_UUID: 0x");
 						for(i = 0; i < adlength-1; i++) {
 							APP_DBG_MSG("%X",
 									adv_report_data[k + 2 + i]);
 							if (CRS_STM_UUID[i] != adv_report_data[k + 2 + i]) {
-								APP_DBG_MSG("CRS_STM_UUID[%d] 0x%x != adv_report_data[%d + 2 + %d] 0x%x\n",
+								APP_DBG_MSG(" CRS_STM_UUID[%d] 0x%x != adv_report_data[%d + 2 + %d] 0x%x\n",
 										i, CRS_STM_UUID[i], k, i, adv_report_data[k + 2 + i]);
 								APP_DBG_MSG("AD_TYPE_128_BIT_SERV_UUID not a Cable Replacement Service\n");
 								result = FALSE;
@@ -753,7 +760,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 
 
 
-#if (BLE_CFG_PERIPHERAL == 1)
+//#if (BLE_CFG_PERIPHERAL == 1)
 APP_BLE_ConnStatus_t APP_BLE_Get_Client_Connection_Status(uint16_t Connection_Handle) {
 	uint8_t index;
 
@@ -772,7 +779,7 @@ APP_BLE_ConnStatus_t APP_BLE_Get_Client_Connection_Status(uint16_t Connection_Ha
 		return BleApplicationContext.Device_Connection_Status[index];
 	}
 }
-#endif
+//#endif
 
 #if (BLE_CFG_CENTRAL == 1)
 APP_BLE_ConnStatus_t APP_BLE_Get_Server_Connection_Status(void) {
@@ -1114,16 +1121,18 @@ static void Adv_Mgr( void ) {
 }
 #endif
 
+#if (BLE_CFG_CENTRAL == 1)
 static void ConnMgr( void ) {
 	/**
 	 * The code shall be executed in the background as an aci command may be sent
 	 * The background is the only place where the application can make sure a new aci command
 	 * is not sent if there is a pending one
 	 */
-	osThreadFlagsSet( ConnectRequestId, 1 );
+	osThreadFlagsSet(ConnectRequestThreadId, 1);
 
 	return;
 }
+#endif
 
 #if (BLE_CFG_PERIPHERAL == 1)
 static void AdvUpdateThread(void *argument) {
@@ -1146,78 +1155,85 @@ static void HciUserEvtThread(void *argument) {
 	UNUSED(argument);
 
 	for(;;) {
-		osThreadFlagsWait( 1, osFlagsWaitAny, osWaitForever);
-		hci_user_evt_proc( );
+		osThreadFlagsWait(1, osFlagsWaitAny, osWaitForever);
+		hci_user_evt_proc();
 	}
 }
 
 /* USER CODE BEGIN FD_SPECIFIC_FUNCTIONS */
-static void ScanRequestThread( void *argument ) {
+#if (BLE_CFG_CENTRAL == 1)
+static void ScanRequestThread(void *argument) {
 	tBleStatus result;
 	uint8_t index;
 
-	index = 0;
-	while((index < CFG_MAX_CONNECTION) &&
-			(BleApplicationContext.Device_Connection_Status[index] != APP_BLE_IDLE)) {
-		index++;
-	}
-
-	if (index < CFG_MAX_CONNECTION) {
-		//    BSP_LED_On(LED_BLUE);
-		result = aci_gap_start_general_discovery_proc(SCAN_P, SCAN_L, PUBLIC_ADDR, 1);
-		if (result == BLE_STATUS_SUCCESS)
-		{
-			APP_DBG_MSG("** START GENERAL DISCOVERY (SCAN) **\n");
+	for(;;) {
+		osThreadFlagsWait(1, osFlagsWaitAny, osWaitForever);
+		index = 0;
+		while((index < CFG_MAX_CONNECTION) &&
+				(BleApplicationContext.Device_Connection_Status[index] != APP_BLE_IDLE)) {
+			index++;
 		}
-		else
-		{
-			APP_DBG_MSG("-- aci_gap_start_general_discovery_proc, Failed\n");
-			//      BSP_LED_On(LED_RED);
-		}
-	} else {
-		APP_DBG_MSG("No stored connection in state APP_BLE_IDLE!\n");
-	}
-	return;
-}
 
-static void ConnectRequestThread( void *argument ) {
-	tBleStatus result;
-	uint8_t index;
-
-	index = 0;
-	while((index < CFG_MAX_CONNECTION) &&
-			(BleApplicationContext.Device_Connection_Status[index] != APP_BLE_IDLE)) {
-		index++;
-	}
-
-	APP_DBG_MSG("** CREATE CONNECTION TO SERVER **\n");
-
-	if (index < CFG_MAX_CONNECTION) {
-		result = aci_gap_create_connection(
-				SCAN_P,
-				SCAN_L,
-				PUBLIC_ADDR,
-				SERVER_REMOTE_BDADDR,
-				PUBLIC_ADDR,
-				CONN_P1,
-				CONN_P2,
-				0,
-				SUPERV_TIMEOUT,
-				CONN_L1,
-				CONN_L2);
-
-		if (result == BLE_STATUS_SUCCESS) {
-			BleApplicationContext.Device_Connection_Status[index] = APP_BLE_LP_CONNECTING;
+		if (index < CFG_MAX_CONNECTION) {
+			//    BSP_LED_On(LED_BLUE);
+			result = aci_gap_start_general_discovery_proc(SCAN_P, SCAN_L, PUBLIC_ADDR, 1);
+			if (result == BLE_STATUS_SUCCESS)
+			{
+				APP_DBG_MSG("** START GENERAL DISCOVERY (SCAN) **\n");
+			}
+			else
+			{
+				APP_DBG_MSG("-- aci_gap_start_general_discovery_proc, Failed\n");
+				//      BSP_LED_On(LED_RED);
+			}
 		} else {
-			//      BSP_LED_On(LED_RED);
-			BleApplicationContext.Device_Connection_Status[index] = APP_BLE_IDLE;
+			APP_DBG_MSG("No stored connection in state APP_BLE_IDLE!\n");
 		}
-	} else {
-		APP_DBG_MSG("No stored connection in state APP_BLE_CONNECTED_CLIENT!\n");
 	}
-
-	return;
 }
+
+static void ConnectRequestThread(void *argument) {
+	tBleStatus result;
+	uint8_t index;
+
+	for(;;) {
+		osThreadFlagsWait( 1, osFlagsWaitAny, osWaitForever);
+		index = 0;
+		while((index < CFG_MAX_CONNECTION) &&
+				(BleApplicationContext.Device_Connection_Status[index] != APP_BLE_IDLE)) {
+			index++;
+		}
+
+		APP_DBG_MSG("** CREATE CONNECTION TO SERVER **\n");
+
+		if (index < CFG_MAX_CONNECTION) {
+			result = aci_gap_create_connection(
+					SCAN_P,
+					SCAN_L,
+					PUBLIC_ADDR,
+					SERVER_REMOTE_BDADDR,
+					PUBLIC_ADDR,
+					CONN_P1,
+					CONN_P2,
+					0,
+					SUPERV_TIMEOUT,
+					CONN_L1,
+					CONN_L2);
+
+			if (result == BLE_STATUS_SUCCESS) {
+				BleApplicationContext.Device_Connection_Status[index] = APP_BLE_LP_CONNECTING;
+			} else {
+				//      BSP_LED_On(LED_RED);
+				BleApplicationContext.Device_Connection_Status[index] = APP_BLE_IDLE;
+			}
+		} else {
+			APP_DBG_MSG("No stored connection in state APP_BLE_CONNECTED_CLIENT!\n");
+		}
+
+	}
+}
+#endif
+
 /* USER CODE END FD_SPECIFIC_FUNCTIONS */
 /*************************************************************
  *
@@ -1226,20 +1242,24 @@ static void ConnectRequestThread( void *argument ) {
  *************************************************************/
 void hci_notify_asynch_evt(void* pdata) {
 	UNUSED(pdata);
-	osThreadFlagsSet( HciUserEvtThreadId, 1 );
+	// UTIL_SEQ_SetTask(1 << CFG_TASK_HCI_ASYNCH_EVT_ID, CFG_SCH_PRIO_0);
+	osThreadFlagsSet(HciUserEvtThreadId, 1);
 	return;
 }
 
 void hci_cmd_resp_release(uint32_t flag) {
 	UNUSED(flag);
-	osSemaphoreRelease( SemHciId );
+	// UTIL_SEQ_SetEvt(1 << CFG_IDLEEVT_HCI_CMD_EVT_RSP_ID);
+	osSemaphoreRelease(SemHciId);
 	return;
 }
 
 void hci_cmd_resp_wait(uint32_t timeout) {
-	UNUSED(timeout);
-	osSemaphoreAcquire( SemHciId, osWaitForever );
-	return;
+	// UTIL_SEQ_WaitEvt(1 << CFG_IDLEEVT_HCI_CMD_EVT_RSP_ID);
+	osStatus_t status = osSemaphoreAcquire(SemHciId, timeout);
+	if (status != osOK) {
+		Error_Handler();
+	}
 }
 
 static void BLE_UserEvtRx( void * pPayload ) {
@@ -1256,14 +1276,18 @@ static void BLE_UserEvtRx( void * pPayload ) {
 	}
 }
 
-static void BLE_StatusNot( HCI_TL_CmdStatus_t status ) {
+static void BLE_StatusNot(HCI_TL_CmdStatus_t status) {
 	switch (status) {
 	case HCI_TL_CmdBusy:
-		osMutexAcquire( MtxHciId, osWaitForever );
+		// task_id_list = (1 << CFG_LAST_TASK_ID_WITH_HCICMD) - 1;
+		// UTIL_SEQ_PauseTask(task_id_list);
+		osMutexAcquire(MtxHciId, osWaitForever);
 		break;
 
 	case HCI_TL_CmdAvailable:
-		osMutexRelease( MtxHciId );
+		// task_id_list = (1 << CFG_LAST_TASK_ID_WITH_HCICMD) - 1;
+		// UTIL_SEQ_ResumeTask(task_id_list);
+		osMutexRelease(MtxHciId);
 		break;
 
 	default:
@@ -1272,7 +1296,7 @@ static void BLE_StatusNot( HCI_TL_CmdStatus_t status ) {
 	return;
 }
 
-void SVCCTL_ResumeUserEventFlow( void ) {
+void SVCCTL_ResumeUserEventFlow(void) {
 	hci_resume_flow();
 	return;
 }
